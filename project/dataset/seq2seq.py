@@ -1,0 +1,105 @@
+import numpy as np
+import pandas as pd
+from project.dataset.base import _ChessDataset
+import torch
+
+from project.db_utils import fetch_games
+
+
+class BoardStatePredictionDataset(_ChessDataset):
+    def __init__(self, database, encoder):
+        super().__init__(database, encoder)
+
+        self.fen_vocab, self.fen_vocab_map = self.get_fen_map()
+
+        # get game lengths
+        query = """
+        SELECT DISTINCT board_fen_id, move_number, game_id
+        FROM moves
+        """
+        df = pd.read_sql_query(query, con=self.conn)
+        self.game_lengths = df.groupby("game_id").aggregate("max")["move_number"].values
+        self.game_bins = self.game_lengths.cumsum()
+
+    def get_fen_map(self):
+        pieces = "prnbqk"
+        extra_symbols = " W-09/"
+        sos = "SOS"  # start of sequence
+        eos = "EOS"  # end of sequence 
+        board_vocab = "12345678" + pieces.lower() + pieces.upper() + extra_symbols
+        fen_vocab = np.array([*list(board_vocab), sos, eos])
+        fen_symbol_map = dict(zip(fen_vocab, np.arange(len(fen_vocab))))
+        return fen_vocab, fen_symbol_map
+
+    def encode_board(self, board_fen: str) -> torch.Tensor:
+        mask = self.fen_vocab[None] == np.array(["SOS"] + list(board_fen) + ["EOS"])[..., None]
+        _, idx = np.where(mask)
+        return torch.from_numpy(idx)
+
+    def __len__(self):
+        return self.game_bins[-1]
+
+    def __getitem__(self, index):
+        game_id = np.digitize(index, self.game_bins)
+        if game_id > 0:
+            move_idx = index - self.game_bins[game_id - 1]
+        else:
+            move_idx = index
+
+        query = f"""
+                    SELECT mc.move, m.board_fen_id
+                    FROM moves m
+                    Join move_collection mc on mc.id = m.move_id
+                    Where m.game_id = {game_id + 1} AND m.move_number <= {move_idx + 1} 
+                    ORDER BY m.move_number
+                """
+        move_df = pd.read_sql_query(query, con=self.conn)
+        moves = self.encode_moves(move_df["move"].values)
+        
+        query = f"""
+                    SELECT board_fen
+                    FROM board_states
+                    Where id = {move_df.iloc[-1]["board_fen_id"]} 
+                """
+        fen = pd.read_sql_query(query, con=self.conn)["board_fen"].values[0]
+        fen = self.encode_board(fen)
+        return moves, fen
+    
+
+class NextTokenDataset(_ChessDataset):
+    def __init__(self, database, encoder):
+        super().__init__(database, encoder)
+        
+    def __len__(self):
+        df = fetch_games(connection=self.conn, columns="id")
+        return len(df)
+    
+    def __getitem__(self, index):
+        # index = game_id
+        
+        query = f"""
+                    SELECT mc.move
+                    FROM moves m
+                    Join move_collection mc on mc.id = m.move_id
+                    Where m.game_id = {index + 1} 
+                    ORDER BY m.move_number
+                """
+        move_df = pd.read_sql_query(query, con=self.conn)
+        moves = move_df["move"].values
+        moves = self.encode_moves(moves)
+        x = moves[:-1]
+        y = moves[1:]
+        return x, y
+    
+
+if __name__ == "__main__":
+    from gensim.models import Word2Vec
+    
+    example_fen = "8/2k5/1p6/p2QP3/8/2r5/P7/1K6 w - - 1 43"
+    w2v = Word2Vec.load("models/word2vec.model")
+    ds = BoardStatePredictionDataset("data/chess_games_1.db", w2v)
+    
+    w2v = Word2Vec.load("models/word2vec.model")
+    ds = NextTokenDataset("data/chess_games_1.db", w2v)
+
+    
