@@ -1,0 +1,93 @@
+import numpy as np
+import pandas as pd
+from pytorch_lightning import LightningDataModule
+
+from project.dataset.seq2seq import NextTokenDataset
+from project.db_utils import fetch_games
+from gensim.models import Word2Vec
+from torch.utils.data import DataLoader
+import sqlite3
+
+
+class NextTokenDM(LightningDataModule):
+    def __init__(
+        self,
+        database: str,
+        encoder_weights: str = None, 
+        batch_size: int = 1,
+        num_worker: int = 1,
+    ):
+        super().__init__()
+        self.database = database
+        self.encoder_weights = encoder_weights
+        self.batch_size = batch_size
+        self.num_worker = num_worker
+
+        if self.encoder_weights is not None:
+            w2v = Word2Vec.load(self.encoder_weights)
+            vocab_table = None
+        else:
+            w2v = None
+            query = """
+                SELECT * 
+                FROM move_collection
+            """
+            df = pd.read_sql_query(query, sqlite3.connect(self.database))
+            vocab_table = df["move"].values
+        
+        # get all game ids
+        df = fetch_games(db_path=self.database)["game_id"].values
+        # shuffle ids and get first 70% as train 20% val and 10% test
+        np.random.shuffle(df)
+        cutoffs = (len(df) * np.array([0.7, 0.9])).astype(int)
+        train_idx, val_idx, test_idx = np.split(df, cutoffs)
+
+        self.train_set = NextTokenDataset(
+            self.database,
+            encoder=w2v,
+            vocab_table=vocab_table,
+            game_ids=train_idx,
+        )
+        self.val_set = NextTokenDataset(
+            self.database,
+            encoder=w2v,
+            vocab_table=vocab_table,
+            game_ids=val_idx,
+        )
+        self.test_set = NextTokenDataset(
+            self.database,
+            encoder=w2v,
+            vocab_table=vocab_table,
+            game_ids=test_idx,
+        )
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_set,
+            self.batch_size,
+            shuffle=True,
+            num_workers=self.num_worker,
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_set,
+            self.batch_size,
+            shuffle=False,
+            num_workers=self.num_worker,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_set,
+            self.batch_size,
+            shuffle=False,
+            num_workers=self.num_worker,
+        )
+
+    def get_vocab_size(self) -> int:
+        query = """
+            SELECT * FROM move_collection
+        """
+        df = pd.read_sql_query(query, sqlite3.connect(self.database))
+        return len(df)

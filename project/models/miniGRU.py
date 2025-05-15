@@ -101,7 +101,7 @@ class MinimalGRUCell(MinimalRNN):
         x, h_0 = self._preprocessing(x, h_0)
         latent = self.net.forward(x)
         z = latent[..., : self.hidden_dim]
-        h_tilde = latent[..., self.hidden_dim :]    
+        h_tilde = latent[..., self.hidden_dim :]
         z = -self.softplus(-z)  # sigmoid(z) in log space
         z_inv = -self.softplus(z)  # (1 - z) in log space
 
