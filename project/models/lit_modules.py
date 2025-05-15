@@ -4,6 +4,8 @@ import torch
 import pytorch_lightning as pl
 from gensim.models import Word2Vec
 
+from project.models.miniGRU import MinimalGRU
+
 
 class BoardFenPredictor(pl.LightningModule):
     def __init__(
@@ -97,6 +99,9 @@ class NextTokenPredictor(pl.LightningModule):
                 d_model=d_model, nhead=n_heads, dropout=dropout
             )
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+        elif model_type == "mini-gru":
+            self.rnn = MinimalGRU(input_dim=self.embedding.embedding_dim, hidden_dim=d_model, output_dim=d_model)
+            
         else:
             raise ValueError("model_type must be 'rnn' or 'transformer'")
 
@@ -109,7 +114,7 @@ class NextTokenPredictor(pl.LightningModule):
         """
         embedded = self.embedding(x)  # (batch, seq_len, d_model)
 
-        if self.model_type == "rnn":
+        if self.model_type in ["rnn", "mini-gru"]:
             output, _ = self.rnn(embedded)
         else:  # Transformer
             # Transformer expects (seq_len, batch, d_model)

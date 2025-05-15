@@ -16,7 +16,7 @@ def train(model_type="rnn", max_epochs=10, lr=1e-3, checkpoint_dir="checkpoints"
     model = NextTokenPredictor(
         vocab_size=dm.get_vocab_size(),
         model_type=model_type,
-        lr=lr,  
+        lr=lr,
         word2vec=encoder_weight_location,
         freeze_embeddings=True,
     )

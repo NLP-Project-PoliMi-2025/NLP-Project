@@ -46,7 +46,7 @@ class MinimalRNN(Module):
         return torch.exp(log_h[:, 1:])
 
 
-class MinimalGRUCell(MinimalRNN):
+class MinimalGRU(MinimalRNN):
     def __init__(
         self,
         input_dim: int,
@@ -64,7 +64,7 @@ class MinimalGRUCell(MinimalRNN):
         self.flatten_input = flatten_input or encoder is None
 
         linear = nn.Sequential(
-            nn.Linear(input, hidden_dim),
+            nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -110,5 +110,5 @@ class MinimalGRUCell(MinimalRNN):
         h = self.parallel_scan_log(z_inv, h_tilde)
 
         # transform
-        out = self.out_layer.forward(h[:, -1])
+        out = self.out_layer.forward(h)
         return out, h
