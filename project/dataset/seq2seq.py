@@ -6,6 +6,7 @@ from project.dataset.base import _ChessDataset
 import torch
 import sqlite3
 from project.db_utils import fetch_games, fetch_games_with_moves, fetch_moves
+from project.utils.info import process_runindicator
 
 
 class BoardStatePredictionDataset(_ChessDataset):
@@ -80,7 +81,6 @@ class NextTokenDataset(_ChessDataset):
         self.use_ram = use_ram
 
         if self.use_ram:
-            print(f"load {len(self.game_ids)} games into RAM")
             query = f"""
                 SELECT mc.move, m.move_number, m.game_id
                 FROM moves m
@@ -88,8 +88,10 @@ class NextTokenDataset(_ChessDataset):
                 WHERE m.game_id IN {tuple(game_ids)}
                 ORDER BY m.game_id, m.move_number
             """
-            self.df = pd.read_sql_query(query, con=sqlite3.connect(self.database))
-            print("Loaded games")
+            with process_runindicator(f"{self.__repr__()}: Loading moves into RAM"):
+                self.df = pd.read_sql_query(
+                    query, con=sqlite3.connect(self.database))
+            self.max_move_number = self.df["move_number"].max()
     def _load_from_db(self, index: int) -> np.ndarray:
         game_id = self.game_ids[index]
         query = f"""
