@@ -16,6 +16,8 @@ def fen_to_board(fen):
     return board
 
 def detect_move_and_capture(fen_before, fen_after):
+    """Detect the piece moved and captured from FEN strings."""
+    # Convert FEN strings to board arrays
     board_before = fen_to_board(fen_before)
     board_after = fen_to_board(fen_after)
 
