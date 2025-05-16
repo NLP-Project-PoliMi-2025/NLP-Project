@@ -1,10 +1,11 @@
 from typing import List
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from project.dataset.base import _ChessDataset
 import torch
-
-from project.db_utils import fetch_games
+import sqlite3
+from project.db_utils import fetch_games, fetch_games_with_moves, fetch_moves
 
 
 class BoardStatePredictionDataset(_ChessDataset):
@@ -71,15 +72,25 @@ class BoardStatePredictionDataset(_ChessDataset):
 
 
 class NextTokenDataset(_ChessDataset):
-    def __init__(self, database, encoder, vocab_table, game_ids: List[int]):
+    def __init__(
+        self, database, encoder, vocab_table, game_ids: List[int], use_ram: bool = False
+    ):
         super().__init__(database, encoder, vocab_table)
         self.game_ids = game_ids
+        self.use_ram = use_ram
 
-    def __len__(self):
-        return len(self.game_ids)
-
-    def __getitem__(self, index):   
-        # index = game_id
+        if self.use_ram:
+            print(f"load {len(self.game_ids)} games into RAM")
+            query = f"""
+                SELECT mc.move, m.move_number, m.game_id
+                FROM moves m
+                JOIN move_collection mc ON m.move_id = mc.id
+                WHERE m.game_id IN {tuple(game_ids)}
+                ORDER BY m.game_id, m.move_number
+            """
+            self.df = pd.read_sql_query(query, con=sqlite3.connect(self.database))
+            print("Loaded games")
+    def _load_from_db(self, index: int) -> np.ndarray:
         game_id = self.game_ids[index]
         query = f"""
                     SELECT mc.move
@@ -90,6 +101,26 @@ class NextTokenDataset(_ChessDataset):
                 """
         move_df = pd.read_sql_query(query, con=self.conn)
         moves = move_df["move"].values
+        return moves
+
+    def _load_from_ram(self, index: int) -> np.ndarray:
+        game_id = self.game_ids[index]
+        moves = (
+            self.df[self.df["game_id"] == game_id]
+            .sort_values("move_number")["move"]
+            .values
+        )
+        return moves
+
+    def __len__(self):
+        return len(self.game_ids)
+
+    def __getitem__(self, index):
+        # index = game_id
+        if self.use_ram:
+            moves = self._load_from_ram(index)
+        else:
+            moves = self._load_from_db(index)
         moves = self.encode_moves(moves)
         x = moves[:-1]
         y = moves[1:]

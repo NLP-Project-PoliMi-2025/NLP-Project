@@ -16,6 +16,7 @@ class NextTokenDM(LightningDataModule):
         encoder_weights: str = None, 
         batch_size: int = 1,
         num_worker: int = 1,
+        use_ram: bool = True
     ):
         super().__init__()
         self.database = database
@@ -25,7 +26,7 @@ class NextTokenDM(LightningDataModule):
 
         if self.encoder_weights is not None:
             w2v = Word2Vec.load(self.encoder_weights)
-            vocab_table = None
+            vocab_table = None      
         else:
             w2v = None
             query = """
@@ -47,18 +48,21 @@ class NextTokenDM(LightningDataModule):
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=train_idx,
+            use_ram=use_ram
         )
         self.val_set = NextTokenDataset(
             self.database,
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=val_idx,
+            use_ram=use_ram
         )
         self.test_set = NextTokenDataset(
             self.database,
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=test_idx,
+            use_ram=use_ram
         )
 
     def train_dataloader(self):

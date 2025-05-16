@@ -95,10 +95,12 @@ class NextTokenPredictor(pl.LightningModule):
                 batch_first=True,
             )
         elif model_type == "transformer":
+            self.dim_map = nn.Linear(self.embedding.embedding_dim, d_model)
             encoder_layer = nn.TransformerEncoderLayer(
-                d_model=d_model, nhead=n_heads, dropout=dropout
+                d_model=d_model, nhead=n_heads, dropout=dropout, dim_feedforward=256
             )
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+            
         elif model_type == "mini-gru":
             self.rnn = MinimalGRU(input_dim=self.embedding.embedding_dim, hidden_dim=d_model, output_dim=d_model)
             
@@ -118,6 +120,7 @@ class NextTokenPredictor(pl.LightningModule):
             output, _ = self.rnn(embedded)
         else:  # Transformer
             # Transformer expects (seq_len, batch, d_model)
+            embedded = self.dim_map.forward(embedded)
             embedded = embedded.permute(1, 0, 2)
             output = self.transformer(embedded)
             output = output.permute(1, 0, 2)  # back to (batch, seq_len, d_model)
