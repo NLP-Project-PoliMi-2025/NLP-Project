@@ -1,3 +1,5 @@
+# TODO: unit test on parallel scan          
+
 from typing import List, Tuple
 
 import torch
@@ -102,28 +104,32 @@ class MinimalGRU(MinimalRNN):
                 hidden (Tensor): (batch_size, seq_len, hidden_dim)
         """
         x, h_0 = self._preprocessing(x, h_0)
+        
         latent = self.net.forward(x)
-        z = latent[..., : self.hidden_dim]
+        k = latent[..., : self.hidden_dim]
         h_tilde = latent[..., self.hidden_dim:]
-        z = -self.softplus(-z)  # sigmoid(z) in log space
-        z_inv = -self.softplus(z)  # (1 - z) in log space
+        
+        log_z = -self.softplus(-k)  # sigmoid(z) in log space
+        log_coeffs = -self.softplus(log_z)  # (1 - z) in log space
 
         h_tilde = self.hidden_log_activation(h_tilde)
-        h_tilde = torch.cat([h_0, z + h_tilde], dim=1)
-        # if torch.any(torch.isnan(h_tilde)):
+        h_0 = self.hidden_log_activation(h_0)
+        
+        log_values = torch.cat([h_0, log_z + h_tilde], dim=1)
+        # if torch.any(torch.isnan(log_values)):
         #     print("x", x)
-        #     print("h_tilde", h_tilde)
-        #     print("z_inv", z_inv)
+        #     print("log_values", log_values)
+        #     print("log_coeffs", log_coeffs)
         #     # save the tensors to a text file for debugging
         #     with open("debug.txt", "w") as f:
         #         f.write(f"x: {x.cpu().detach().tolist()}\n")
-        #         f.write(f"h_tilde: {h_tilde.cpu().detach().tolist()}\n")
-        #         f.write(f"z_inv: {z_inv.cpu().detach().tolist()}\n")
+        #         f.write(f"log_values: {log_values.cpu().detach().tolist()}\n")
+        #         f.write(f"log_coeffs: {log_coeffs.cpu().detach().tolist()}\n")
         #         f.write(f"z: {z.cpu().detach().tolist()}\n")
         #         f.write(f"latent: {latent.cpu().detach().tolist()}\n")
         #     # raise an error
-        #     raise ValueError("h_tilde contains NaN values")
-        h = self.parallel_scan_log(z_inv, h_tilde)
+        #     raise ValueError("log_values contains NaN values")
+        h = self.parallel_scan_log(log_coeffs, log_values)
 
         # transform
         out = self.out_layer.forward(h)
