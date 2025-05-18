@@ -20,22 +20,23 @@ def train(
         [label],
         8,
     )
-    dm.setup_all()
+    dm.setup()
 
     # Instantiate model
     model = SeqAnnotator(
-        n_target_classes=dm.get_num_labels(),
-        vocab_size=dm.get_vocab_size(),
+        n_target_classes=dm.get_num_labels()[0],
+        vocab_size=dm.get_vocab_size()[0],
         d_model=256,
         n_layers=2,
         n_heads=4,
         dropout=0.1,
-        lr=lr,
+        lr=lr,      
         model_type=model_type,
         ignore_index=0,
     )
     print(dm.get_vocab_size())
     print(model)
+    print(dm.fit_set.lookup_tables)
 
     # Checkpointing and logging
     checkpoint_callback = ModelCheckpoint(
@@ -61,4 +62,4 @@ def train(
     trainer.fit(model, dm)
 
     print(f"Best model saved at: {checkpoint_callback.best_model_path}")
-    return model        
+    return model
