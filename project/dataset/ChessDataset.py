@@ -13,7 +13,7 @@ class ChessDataset(Dataset):
         self.parquette_path = parquette_path
         assert lookupReference is None or lookupReference.lookup_tables is not None, "Lookup tables reference has no lookup tables"
         self.lookupReference = lookupReference
-        self.inputColums = inputColumns
+        self.inputColumns = inputColumns
         self.labelColumns = labelColumns
 
         self.__instantiateLookup()
@@ -25,11 +25,11 @@ class ChessDataset(Dataset):
             f"Loading parquet file @ ",
             self.parquette_path,
             " with columns ",
-            self.inputColums + self.labelColumns,
+            self.inputColumns + self.labelColumns,
         )
         # Load the parquet file
         self.df = pd.read_parquet(
-            self.parquette_path, columns=self.inputColums + self.labelColumns
+            self.parquette_path, columns=self.inputColumns + self.labelColumns
         )
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
@@ -102,7 +102,7 @@ class ChessDataset(Dataset):
         row = self.df.iloc[index]
 
         # Get the input and label columns
-        inputs = row[self.inputColums].values
+        inputs = row[self.inputColumns].values
         # Convert to tensors
         inputs = [torch.tensor(i) for i in inputs]
 
@@ -126,7 +126,7 @@ class ChessDataset(Dataset):
         Returns:
             dict: dictionary of input lookup tables
         """
-        return {column: self.lookup_tables[column] for column in self.inputColums}
+        return {column: self.lookup_tables[column] for column in self.inputColumns}
 
     def getLabelLookupTables(self):
         """
