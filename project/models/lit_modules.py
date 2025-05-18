@@ -326,9 +326,10 @@ class SeqAnnotator(pl.LightningModule):
         return logits, hidden
 
     def training_step(
-        self, batch: Tuple[Tensor, List[Tensor]], batch_idx, dataloader_idx
+        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx
     ):
         x, y = batch
+        x = x[0]
         y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
@@ -340,9 +341,10 @@ class SeqAnnotator(pl.LightningModule):
         return loss
 
     def validation_step(
-        self, batch: Tuple[Tensor, List[Tensor]], batch_idx, dataloader_idx
+        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx
     ):
         x, y = batch
+        x = x[0]
         y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
@@ -353,8 +355,9 @@ class SeqAnnotator(pl.LightningModule):
         self.get_metrics(logits, y, "val")
         return loss
 
-    def test_step(self, batch: Tuple[Tensor, List[Tensor]], batch_idx, dataloader_idx):
+    def test_step(self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx):
         x, y = batch
+        x = x[0]
         y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
