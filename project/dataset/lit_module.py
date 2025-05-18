@@ -117,16 +117,16 @@ class SeqAnnotationDM(LightningDataModule):
         num_worker: int = 1,
     ):
         super().__init__()
-        self.train_file = train_file
-        self.val_file = val_file
+        self.fit_file = train_file
+        self.validate_file = val_file
         self.test_file = test_file
         self.batch_size = batch_size
         self.input_column = input_column
         self.label_column = label_column
         self.num_worker = num_worker
 
-        self.train_set: ChessDataset
-        self.val_set: ChessDataset
+        self.fit_set: ChessDataset
+        self.validate_set: ChessDataset
         self.test_set: ChessDataset
         
         
@@ -136,20 +136,15 @@ class SeqAnnotationDM(LightningDataModule):
         self.setup("test")
         
     def setup(self, stage = None):
-        if stage is None:
-            print("provide")
-            return 
-        stage_map = {"fit": "train", "validate": "val", "test": "test"}
-            
-        file = getattr(self, f"{stage_map[stage]}_file")
+        file = getattr(self, f"{stage}_file")
         data_set = ChessDataset(file, self.input_column, self.label_column)
 
-        ds_name = f"{stage_map[stage]}_set"
+        ds_name = f"{stage}_set"
         setattr(self, ds_name, data_set)
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_set,
+            self.fit_set,
             self.batch_size,
             shuffle=True,
             num_workers=self.num_worker,
@@ -158,7 +153,7 @@ class SeqAnnotationDM(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_set,
+            self.validate_set,
             self.batch_size,
             shuffle=False,
             num_workers=self.num_worker,
