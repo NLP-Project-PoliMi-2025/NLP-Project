@@ -1,3 +1,6 @@
+from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
+
+
 class EntryPoint:
     def train_next_token(
         self,
@@ -23,4 +26,6 @@ class EntryPoint:
         train(label, model_type, max_epochs, lr, checkpoint_dir)
 
     def start_chess_bot(self, model_weights: str, start_fen: str = None):
-        raise NotImplementedError
+        applet = ChessPlayerApplet(fen=start_fen)
+        applet.run()
+
