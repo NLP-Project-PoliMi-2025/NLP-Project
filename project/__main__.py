@@ -18,6 +18,11 @@ def execute(args: dict) -> bool:
                 checkpoint_dir=args["checkpoint_dir"],
             )
 
+        case "start-chess-bot":
+            module.start_chess_bot(
+                model_weights=args["model_weights"], start_fen=args["start_fen"]
+            )
+
         case _:
             return False
 

@@ -2,6 +2,25 @@ from argparse import ArgumentParser
 from typing import Tuple, Dict, List
 
 
+def add_start_chess_bot_args(parser: ArgumentParser) -> ArgumentParser:
+    parser.add_argument(
+        "--model-weights",
+        help="--no-documentation-exists--",
+        dest="model_weights",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--start-fen",
+        help="--no-documentation-exists--",
+        dest="start_fen",
+        type=str,
+        default=None,
+        required=False,
+    )
+    return parser
+
+
 def add_train_next_token_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--model-type",
@@ -46,6 +65,11 @@ def setup_entrypoint_parser(
     )
     train_next_token = add_train_next_token_args(train_next_token)
     subparser["train_next_token"] = train_next_token
+    start_chess_bot = command_subparser.add_parser(
+        "start-chess-bot", help="--no-documentation-exists--"
+    )
+    start_chess_bot = add_start_chess_bot_args(start_chess_bot)
+    subparser["start_chess_bot"] = start_chess_bot
     return parser, subparser
 
 
