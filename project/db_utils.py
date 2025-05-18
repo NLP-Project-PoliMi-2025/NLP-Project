@@ -143,7 +143,6 @@ def fetch_games_with_moves(
     connection: sqlite3.Connection = None,
     db_path: str = "chess.db",
 ) -> pd.DataFrame:
-
     new_connection = False
     if connection is None:
         connection = sqlite3.connect(db_path)
