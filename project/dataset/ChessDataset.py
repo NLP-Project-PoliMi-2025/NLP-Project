@@ -8,10 +8,16 @@ import numpy as np
 
 class ChessDataset(Dataset):
     def __init__(
-        self, parquette_path: str, inputColumns: List[str], labelColumns: List[str], lookupReference: 'ChessDataset' = None
+        self,
+        parquette_path: str,
+        inputColumns: List[str],
+        labelColumns: List[str],
+        lookupReference: "ChessDataset" = None,
     ):
         self.parquette_path = parquette_path
-        assert lookupReference is None or lookupReference.lookup_tables is not None, "Lookup tables reference has no lookup tables"
+        assert (
+            lookupReference is None or lookupReference.lookup_tables is not None
+        ), "Lookup tables reference has no lookup tables"
         self.lookupReference = lookupReference
         self.inputColumns = inputColumns
         self.labelColumns = labelColumns
@@ -43,15 +49,14 @@ class ChessDataset(Dataset):
 
     def __checkToBeExploded(self, column):
         return self.df[column].dtype == "O" and (
-            self.df[column].apply(lambda x: isinstance(x, list)).any() or
-            self.df[column].apply(
-                lambda x: isinstance(x, np.ndarray)).any()
+            self.df[column].apply(lambda x: isinstance(x, list)).any()
+            or self.df[column].apply(lambda x: isinstance(x, np.ndarray)).any()
         )
 
     def __convertToIndices(self):
         for column in tqdm.tqdm(self.df.columns, desc="Building lookup tables"):
             # Check if the type of the data is a list
-            if (self.__checkToBeExploded(column)):
+            if self.__checkToBeExploded(column):
                 # Explode the column
                 explodedColum = self.df[column].explode()
 
@@ -89,8 +94,7 @@ class ChessDataset(Dataset):
                 )
             else:
                 self.df[column] = (
-                    self.df[column].map(
-                        self.lookup_tables[column]).astype("int32")
+                    self.df[column].map(self.lookup_tables[column]).astype("int32")
                 )
 
     def __getitem__(self, index):
