@@ -128,15 +128,24 @@ class SeqAnnotationDM(LightningDataModule):
         self.train_set: ChessDataset
         self.val_set: ChessDataset
         self.test_set: ChessDataset
-
-    def setup(self, stage):
+        
+        
+    def setup_all(self):
+        self.setup("fit")
+        self.setup("validate")
+        self.setup("test")
+        
+    def setup(self, stage = None):
+        if stage is None:
+            print("provide")
+            return 
         stage_map = {"fit": "train", "validate": "val", "test": "test"}
+            
         file = getattr(self, f"{stage_map[stage]}_file")
         data_set = ChessDataset(file, self.input_column, self.label_column)
 
         ds_name = f"{stage_map[stage]}_set"
         setattr(self, ds_name, data_set)
-        
 
     def train_dataloader(self):
         return DataLoader(
@@ -146,8 +155,7 @@ class SeqAnnotationDM(LightningDataModule):
             num_workers=self.num_worker,
             collate_fn=collate_fn_next_token,
         )
-        
-    
+
     def val_dataloader(self):
         return DataLoader(
             self.val_set,
@@ -165,4 +173,3 @@ class SeqAnnotationDM(LightningDataModule):
             num_workers=self.num_worker,
             collate_fn=collate_fn_next_token,
         )
-        
