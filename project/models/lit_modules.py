@@ -1,3 +1,5 @@
+# TODO: new w2v embedding table from Paolo and Marti
+
 from typing import Tuple
 from torch import Tensor, nn
 import torch
@@ -5,6 +7,7 @@ import pytorch_lightning as pl
 from gensim.models import Word2Vec
 
 from project.models.miniGRU import MinimalGRU
+
 # metrics from sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -69,7 +72,7 @@ class NextTokenPredictor(pl.LightningModule):
         word2vec: str = None,
         freeze_embeddings: bool = False,
         hidden_lmbda: float = 0.0,  # Regularization parameter
-        weight_decay: float = 0.01,
+        weight_decay: float = 0.0,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -106,15 +109,17 @@ class NextTokenPredictor(pl.LightningModule):
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=d_model, nhead=n_heads, dropout=dropout, dim_feedforward=256
             )
-            self.transformer = nn.TransformerEncoder(
-                encoder_layer, num_layers=n_layers)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
 
         elif model_type == "mini-gru":
             self.rnn = MinimalGRU(
-                input_dim=self.embedding.embedding_dim, hidden_dim=d_model, output_dim=d_model)
+                input_dim=self.embedding.embedding_dim,
+                hidden_dim=d_model,
+                output_dim=d_model,
+            )
 
         else:
-            raise ValueError("model_type must be 'rnn' or 'transformer'")
+            raise ValueError("model_type must be 'rnn' or 'transformer' or 'mini-gru")
 
         self.fc_out = nn.Linear(d_model, vocab_size)
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab_size - 1)
@@ -145,22 +150,23 @@ class NextTokenPredictor(pl.LightningModule):
         logits = logits[:, :-1, :].contiguous().view(-1, self.vocab_size)
         y = y[:, 1:].contiguous().view(-1)
         loss = self.loss_fn(logits, y)
+        
         if self.model_type == "mini-gru":
             # do hidden state regularization
-            reg_loss = self.reg_loss_fn(hidden, torch.zeros_like(hidden))
-            self.log("train_reg_loss", reg_loss)
-            loss = loss + self.hidden_lmbda * reg_loss
+            reg_loss = self.hidden_lmbda * self.reg_loss_fn(hidden, torch.zeros_like(hidden))
+            loss = loss + reg_loss
+            self.log("hidden_reg_loss", reg_loss)
 
         # do weight decay
-        weight_decay_loss = 0
-        trainable_params = [p for p in self.parameters() if p.requires_grad]
-        trainable_params = torch.cat([p.flatten() for p in trainable_params])
-        weight_decay_loss = torch.linalg.norm(
-            trainable_params, 2) 
-        loss = loss + weight_decay_loss * self.weight_decay
+        trainable_params = torch.cat([p.flatten() for p in self.parameters() if p.requires_grad])
+        weight_decay_loss = torch.linalg.norm(trainable_params, 2) * self.weight_decay
+        
+        loss = loss + weight_decay_loss
+        
         self.log("max_weight", trainable_params.max())
         self.log("train_weight_decay_loss", weight_decay_loss)
         self.log("train_loss", loss)
+        
         self.get_metrics(logits, y, "train")
         return loss
 
@@ -189,13 +195,22 @@ class NextTokenPredictor(pl.LightningModule):
         self.log(f"{stage}_acc", acc)
         # do precision for multi-class classification
         precision = precision_score(
-            y, preds, average='weighted', zero_division=0,)
+            y,
+            preds,
+            average="weighted",
+            zero_division=0,
+        )
         self.log(f"{stage}_precision", precision)
         # do recall for multi-class classification
-        recall = recall_score(y, preds, average='weighted', zero_division=0,)
+        recall = recall_score(
+            y,
+            preds,
+            average="weighted",
+            zero_division=0,
+        )
         self.log(f"{stage}_recall", recall)
         # do f1 for multi-class classification
-        f1 = f1_score(y, preds, average='weighted')
+        f1 = f1_score(y, preds, average="weighted")
         self.log(f"{stage}_f1", f1)
 
     def configure_optimizers(self):
