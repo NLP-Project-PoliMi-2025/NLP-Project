@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from gensim.models import Word2Vec
 import numpy as np
 
+
 class BiLSTM(nn.Module):
     """
     A Bidirectional LSTM model for sequence classification.
@@ -11,7 +12,18 @@ class BiLSTM(nn.Module):
     The LSTM processes the input sequence in both forward and backward directions,
     and the final output is obtained by concatenating the outputs from both directions.
     """
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, predictionType: bool, num_outcomes, word2vec=None, freeze_embeddings=False, lr=1e-3):
+
+    def __init__(
+        self,
+        embedding_dim,
+        hidden_dim,
+        vocab_size,
+        predictionType: bool,
+        num_outcomes,
+        word2vec=None,
+        freeze_embeddings=False,
+        lr=1e-3,
+    ):
         """
         Args:
             embedding_dim (int): Dimension of the word embeddings.
@@ -25,7 +37,9 @@ class BiLSTM(nn.Module):
         """
         super(BiLSTM, self).__init__()
         # Bidirectional LSTM; we set batch_first=True to have input like [batch, seq_len, embedding_dim]
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=True, batch_first=True)
+        self.lstm = nn.LSTM(
+            embedding_dim, hidden_dim, bidirectional=True, batch_first=True
+        )
         # Fully connected layer to map hidden state coming from LSTM to output labels
         # (the hidden state is a concatenation of two LSTM outputs since it is bidirectional)
         self.fc = nn.Linear(hidden_dim * 2, num_outcomes)
@@ -54,16 +68,15 @@ class BiLSTM(nn.Module):
         """
         # x: [batch_size, seq_len]
         embeds = self.embedding(x)  # embedded: [batch_size, seq_len, embedding_dim]
-        lstm_out, _ = self.lstm(embeds)   # lstm_out: [batch_size, seq_len, hidden_dim*2]
+        lstm_out, _ = self.lstm(embeds)  # lstm_out: [batch_size, seq_len, hidden_dim*2]
         if self.predictionType:
             # For sequence classification, we take the last output of the LSTM
             lstm_out = lstm_out[:, -1, :]
             logits = self.fc(lstm_out)
         else:
-            logits = self.fc(lstm_out)        # logits: [batch_size, seq_len, num_tags]
+            logits = self.fc(lstm_out)  # logits: [batch_size, seq_len, num_tags]
         return logits
-    
-    
+
     def configure_optimizers(self):
         """
         Configure the optimizer for the model.
@@ -137,7 +150,7 @@ class BiLSTM(nn.Module):
             y = y.view(-1)
             loss = self.loss_fn(logits, y)
         return loss
-    
+
     def set_loss_fn(self):
         self.loss_fn = nn.CrossEntropyLoss()
 

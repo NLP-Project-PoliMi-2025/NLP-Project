@@ -9,3 +9,6 @@ class EntryPoint:
         from project.scripts.train_next_token import train
 
         train(model_type, max_epochs, lr, checkpoint_dir)
+
+    def start_chess_bot(self, model_weights: str, start_fen: str = None):
+        raise NotImplementedError

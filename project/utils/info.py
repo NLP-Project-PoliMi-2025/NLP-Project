@@ -18,6 +18,7 @@ def process_runindicator(desc="Process"):
     try:
         # Start the spinner in a separate thread
         import threading
+
         spinner_thread = threading.Thread(target=spinner_task)
         spinner_thread.start()
 
