@@ -303,14 +303,13 @@ class SeqAnnotator(pl.LightningModule):
         else:
             raise ValueError("model_type must be 'rnn' or 'transformer' or 'mini-gru")
 
-        self.fc_out = nn.Linear(self.d_model, self.n_target_classes)
+        self.fc_out = nn.Sequential(nn.Linear(self.d_model, self.n_target_classes), nn.Softmax(dim=-1))
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         """
         x: (batch, seq_len)
         """
         embedded = self.embedding(x)  # (batch, seq_len, d_model)
-
         if self.model_type in ["rnn", "mini-gru"]:
             output, hidden = self.rnn(embedded)
         else:  # Transformer
@@ -325,13 +324,14 @@ class SeqAnnotator(pl.LightningModule):
         return logits, hidden
 
     def training_step(
-        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
+        self, batch: Tuple[Tensor, Tensor], batch_idx
     ):
+        
         x, y = batch
-        x = x[0]
-        y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
+        # pad the logits to account for the padding token
+        logits = torch.cat([torch.zeros((len(logits), 1), device=x.device), logits], dim=1)
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
         self.log("train_loss", loss)
@@ -340,13 +340,12 @@ class SeqAnnotator(pl.LightningModule):
         return loss
 
     def validation_step(
-        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
+        self, batch: Tuple[Tensor, Tensor], batch_idx
     ):
         x, y = batch
-        x = x[0]
-        y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
+        logits = torch.cat([torch.zeros((len(logits), 1), device=x.device), logits], dim=1)
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
         self.log("val_loss", loss)
@@ -355,13 +354,12 @@ class SeqAnnotator(pl.LightningModule):
         return loss
 
     def test_step(
-        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
+        self, batch: Tuple[Tensor, Tensor], batch_idx
     ):
         x, y = batch
-        x = x[0]
-        y = y[0]
         logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
         logits = logits.contiguous().view(-1, self.n_target_classes)
+        logits = torch.cat([torch.zeros((len(logits), 1), device=x.device), logits], dim=1)
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
         self.log("test_loss", loss)
