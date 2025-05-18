@@ -68,7 +68,7 @@ class ChessDataset(Dataset):
                 # Get the lookup table for the column
                 lookup_table = self.lookup_tables[column]
 
-            maxId = max(lookup_table.values()) if lookup_table else 0
+            maxId = max(lookup_table.values()) if lookup_table else 1
 
             for value in unique_values:
                 # Check if the value is already in the lookup table
