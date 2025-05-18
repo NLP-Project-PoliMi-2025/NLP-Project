@@ -120,21 +120,15 @@ class SeqAnnotationDM(LightningDataModule):
         self.fit_file = train_file
         self.validate_file = val_file
         self.test_file = test_file
+
         self.batch_size = batch_size
         self.input_column = input_column
         self.label_column = label_column
         self.num_worker = num_worker
 
-        self.fit_set: ChessDataset
-        self.validate_set: ChessDataset
-        self.test_set: ChessDataset
-
-    def setup_all(self):
-        self.setup("fit")
-        self.setup("validate", self.train_set)
-        self.setup("test", self.val_set)
-
-        self.lookUps = self.test_set.lookup_tables
+        self.fit_set: ChessDataset = None
+        self.validate_set: ChessDataset = None
+        self.test_set: ChessDataset = None
 
     def get_vocab_size(self) -> tuple[int]:
         vocabSizes = []
@@ -148,17 +142,28 @@ class SeqAnnotationDM(LightningDataModule):
             numLabels.append(len(self.test_set.lookup_tables[column]))
         return tuple(numLabels)
 
-    def setup(self, stage=None, lookup_reference: ChessDataset = None):
-        if stage is None:
-            print("provide")
-            return
-
-        file = getattr(self, f"{stage}_file")
-        data_set = ChessDataset(file, self.input_column,
-                                self.label_column, lookup_reference)
-
-        ds_name = f"{stage}_set"
-        setattr(self, ds_name, data_set)
+    def setup(self, stage = None):
+        if self.fit_set is not None:
+            return 
+        self.fit_set = ChessDataset(
+            self.fit_file,
+            self.input_column,
+            self.label_column,
+            None,
+        )
+        self.validate_set = ChessDataset(
+            self.validate_file,
+            self.input_column,
+            self.label_column,
+            self.fit_set,
+        )
+        self.test_set = ChessDataset(
+            self.test_file,
+            self.input_column,
+            self.label_column,
+            self.validate_set,
+        )
+        self.lookUps = self.test_set.lookup_tables
 
     def train_dataloader(self):
         return DataLoader(

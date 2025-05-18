@@ -89,9 +89,9 @@ class NextTokenDataset(_ChessDataset):
                 ORDER BY m.game_id, m.move_number
             """
             with process_runindicator(f"{self.__repr__()}: Loading moves into RAM"):
-                self.df = pd.read_sql_query(
-                    query, con=sqlite3.connect(self.database))
+                self.df = pd.read_sql_query(query, con=sqlite3.connect(self.database))
             self.max_move_number = self.df["move_number"].max()
+
     def _load_from_db(self, index: int) -> np.ndarray:
         game_id = self.game_ids[index]
         query = f"""

@@ -23,3 +23,9 @@ Project repo for NLP course with Professor Mark Carman at Politecnico di Milano
 
 - one side wins -> 1-0 or 0-1
 - draw -> 1/2 - 1/2
+
+
+
+## Training Game Annotation
+
+python -m project train-game-annotation --label <dataframe column> --model-type <model-type>    
