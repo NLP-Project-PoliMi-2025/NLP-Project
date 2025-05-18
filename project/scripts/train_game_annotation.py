@@ -33,11 +33,12 @@ def train(
         lr=lr,      
         model_type=model_type,
         ignore_index=0,
+        freeze_embeddings=True, 
+        word2vec="model_weights/word2vec.model"
     )
     print(dm.get_vocab_size())
     print(model)
-    print(dm.fit_set.lookup_tables)
-
+    
     # Checkpointing and logging
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
