@@ -83,3 +83,17 @@ class ChessDataset(Dataset):
             column (str): column name
         """
         return self.lookup_tables[column]
+
+    def getInputLookupTables(self):
+        """
+        Returns:
+            dict: dictionary of input lookup tables
+        """
+        return {column: self.lookup_tables[column] for column in self.inputColums}
+
+    def getLabelLookupTables(self):
+        """
+        Returns:
+            dict: dictionary of label lookup tables
+        """
+        return {column: self.lookup_tables[column] for column in self.labelColumns}
