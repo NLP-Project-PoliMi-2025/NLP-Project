@@ -256,7 +256,7 @@ class SeqAnnotator(pl.LightningModule):
         self.transformer: nn.Module
         self.fc_out: nn.Module
         self.build_model()
-        
+
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         self.reg_loss_fn = nn.MSELoss()
 
@@ -274,7 +274,6 @@ class SeqAnnotator(pl.LightningModule):
         else:
             self.embedding = nn.Embedding(self.vocab_size, self.d_model)
 
-        
         if self.model_type == "rnn":
             self.rnn = nn.LSTM(
                 input_size=self.embedding.embedding_dim,
@@ -326,7 +325,7 @@ class SeqAnnotator(pl.LightningModule):
         return logits, hidden
 
     def training_step(
-        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx
+        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
     ):
         x, y = batch
         x = x[0]
@@ -341,7 +340,7 @@ class SeqAnnotator(pl.LightningModule):
         return loss
 
     def validation_step(
-        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx
+        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
     ):
         x, y = batch
         x = x[0]
@@ -355,7 +354,9 @@ class SeqAnnotator(pl.LightningModule):
         self.get_metrics(logits, y, "val")
         return loss
 
-    def test_step(self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx, dataloader_idx):
+    def test_step(
+        self, batch: Tuple[List[Tensor], List[Tensor]], batch_idx
+    ):
         x, y = batch
         x = x[0]
         y = y[0]
@@ -400,3 +401,8 @@ class SeqAnnotator(pl.LightningModule):
         # do f1 for multi-class classification
         f1 = f1_score(y, preds, average="weighted")
         self.log(f"{stage}_f1", f1)
+        
+        
+    def configure_optimizers(self):
+        return torch.optim.AdamW(self.parameters(), lr=self.lr)
+
