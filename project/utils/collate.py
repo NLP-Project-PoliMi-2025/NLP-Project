@@ -20,9 +20,9 @@ def collate_fn_next_token(batch: List[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, T
         pad_len = max_len - len(m)
         # Padding uses index 0 both for words and labels
         # NOTE: HARD CODED TO 1960 REPLACE WITH VOCAB SIZE
-        padded_moves.append(
-            torch.cat([m, 1960 * torch.ones(pad_len, dtype=torch.int)]))
+        padded_moves.append(torch.cat([m, 1960 * torch.ones(pad_len, dtype=torch.int)]))
         padded_next_move.append(
-            torch.cat([n_m, 1960 * torch.ones(pad_len, dtype=torch.int)]))
+            torch.cat([n_m, 1960 * torch.ones(pad_len, dtype=torch.int)])
+        )
 
     return torch.stack(padded_moves), torch.stack(padded_next_move)

@@ -1,4 +1,4 @@
-# TODO: unit test on parallel scan          
+# TODO: unit test on parallel scan
 
 from typing import List, Tuple
 
@@ -25,8 +25,7 @@ class MinimalRNN(Module):
             batch_size = x.shape[0]
             # lets say we have a input of torch.ones in exponential space
             # -> torch.zeros in log space
-            h_0 = torch.zeros(
-                (batch_size, 1, self.hidden_dim), device=x.device)
+            h_0 = torch.zeros((batch_size, 1, self.hidden_dim), device=x.device)
 
         if self.flatten_input and len(x.shape) == 4:
             # expect multichannel input like an image: (batch_size, channels,
@@ -104,17 +103,17 @@ class MinimalGRU(MinimalRNN):
                 hidden (Tensor): (batch_size, seq_len, hidden_dim)
         """
         x, h_0 = self._preprocessing(x, h_0)
-        
+
         latent = self.net.forward(x)
         k = latent[..., : self.hidden_dim]
-        h_tilde = latent[..., self.hidden_dim:]
-        
+        h_tilde = latent[..., self.hidden_dim :]
+
         log_z = -self.softplus(-k)  # sigmoid(z) in log space
         log_coeffs = -self.softplus(log_z)  # (1 - z) in log space
 
         h_tilde = self.hidden_log_activation(h_tilde)
         h_0 = self.hidden_log_activation(h_0)
-        
+
         log_values = torch.cat([h_0, log_z + h_tilde], dim=1)
         # if torch.any(torch.isnan(log_values)):
         #     print("x", x)
