@@ -28,4 +28,9 @@ Project repo for NLP course with Professor Mark Carman at Politecnico di Milano
 
 ## Training Game Annotation
 
-python -m project train-game-annotation --label <dataframe column> --model-type <model-type>    
+python -m project train-game-annotation --label <dataframe-column> --model-type <model-type>    
+
+
+## Start chess bot 
+
+python -m project start-chess-bot --model-weights <model-weights>
