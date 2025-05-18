@@ -131,15 +131,31 @@ class SeqAnnotationDM(LightningDataModule):
 
     def setup_all(self):
         self.setup("fit")
-        self.setup("validate")
-        self.setup("test")
+        self.setup("validate", self.train_set)
+        self.setup("test", self.val_set)
 
-    def setup(self, stage=None):
+        self.lookUps = self.test_set.lookup_tables
+
+    def get_vocab_size(self) -> tuple[int]:
+        vocabSizes = []
+        for column in self.test_set.inputColumns:
+            vocabSizes.append(len(self.test_set.lookup_tables[column]))
+        return tuple(vocabSizes)
+
+    def get_num_labels(self) -> tuple[int]:
+        numLabels = []
+        for column in self.test_set.labelColumns:
+            numLabels.append(len(self.test_set.lookup_tables[column]))
+        return tuple(numLabels)
+
+    def setup(self, stage=None, lookup_reference: ChessDataset = None):
         if stage is None:
             print("provide")
             return
+
         file = getattr(self, f"{stage}_file")
-        data_set = ChessDataset(file, self.input_column, self.label_column)
+        data_set = ChessDataset(file, self.input_column,
+                                self.label_column, lookup_reference)
 
         ds_name = f"{stage}_set"
         setattr(self, ds_name, data_set)
