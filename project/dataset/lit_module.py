@@ -1,3 +1,6 @@
+# TODO: write custom collate function (tutorial 6)
+
+
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningDataModule
@@ -8,6 +11,7 @@ from project.db_utils import fetch_games
 from gensim.models import Word2Vec
 from torch.utils.data import DataLoader
 import sqlite3
+from project.dataset.ChessDataset import ChessDataset
 
 
 class NextTokenDM(LightningDataModule):
@@ -17,7 +21,7 @@ class NextTokenDM(LightningDataModule):
         encoder_weights: str = None,
         batch_size: int = 1,
         num_worker: int = 1,
-        use_ram: bool = True
+        use_ram: bool = True,
     ):
         super().__init__()
         self.database = database
@@ -49,21 +53,21 @@ class NextTokenDM(LightningDataModule):
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=train_idx,
-            use_ram=use_ram
+            use_ram=use_ram,
         )
         self.val_set = NextTokenDataset(
             self.database,
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=val_idx,
-            use_ram=use_ram
+            use_ram=use_ram,
         )
         self.test_set = NextTokenDataset(
             self.database,
             encoder=w2v,
             vocab_table=vocab_table,
             game_ids=test_idx,
-            use_ram=use_ram
+            use_ram=use_ram,
         )
 
     def train_dataloader(self):
@@ -99,3 +103,66 @@ class NextTokenDM(LightningDataModule):
         """
         df = pd.read_sql_query(query, sqlite3.connect(self.database))
         return len(df)
+
+
+class SeqAnnotationDM(LightningDataModule):
+    def __init__(
+        self,
+        train_file: str,
+        val_file: str,
+        test_file: str,
+        batch_size: int,
+        input_column: str,
+        label_column: str,
+        num_worker: int = 1,
+    ):
+        super().__init__()
+        self.train_file = train_file
+        self.val_file = val_file
+        self.test_file = test_file
+        self.batch_size = batch_size
+        self.input_column = input_column
+        self.label_column = label_column
+        self.num_worker = num_worker
+
+        self.train_set: ChessDataset
+        self.val_set: ChessDataset
+        self.test_set: ChessDataset
+
+    def setup(self, stage):
+        stage_map = {"fit": "train", "validate": "val", "test": "test"}
+        file = getattr(self, f"{stage_map[stage]}_file")
+        data_set = ChessDataset(file, self.input_column, self.label_column)
+
+        ds_name = f"{stage_map[stage]}_set"
+        setattr(self, ds_name, data_set)
+        
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_set,
+            self.batch_size,
+            shuffle=True,
+            num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
+        )
+        
+    
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_set,
+            self.batch_size,
+            shuffle=False,
+            num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_set,
+            self.batch_size,
+            shuffle=False,
+            num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
+        )
+        

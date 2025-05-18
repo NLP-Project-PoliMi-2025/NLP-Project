@@ -6,7 +6,9 @@ import tqdm
 
 
 class ChessDataset(Dataset):
-    def __init__(self, parquette_path: str, inputColumns: List[str], labelColumns: List[str]):
+    def __init__(
+        self, parquette_path: str, inputColumns: List[str], labelColumns: List[str]
+    ):
         self.parquette_path = parquette_path
         self.inputColums = inputColumns
         self.labelColumns = labelColumns
@@ -15,11 +17,16 @@ class ChessDataset(Dataset):
         self.__convertToIndices()
 
     def __load_parquet(self):
-        print(f"Loading parquet file @ ", self.parquette_path, " with columns ",
-              self.inputColums + self.labelColumns)
+        print(
+            f"Loading parquet file @ ",
+            self.parquette_path,
+            " with columns ",
+            self.inputColums + self.labelColumns,
+        )
         # Load the parquet file
         self.df = pd.read_parquet(
-            self.parquette_path, columns=self.inputColums + self.labelColumns)
+            self.parquette_path, columns=self.inputColums + self.labelColumns
+        )
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
@@ -29,7 +36,10 @@ class ChessDataset(Dataset):
 
         for column in tqdm.tqdm(self.df.columns, desc="Building lookup tables"):
             # Check if the type of the data is a list
-            if self.df[column].dtype == "O" and self.df[column].apply(lambda x: isinstance(x, list)).any():
+            if (
+                self.df[column].dtype == "O"
+                and self.df[column].apply(lambda x: isinstance(x, list)).any()
+            ):
                 # Explode the column
                 explodedColum = self.df[column].explode()
 
@@ -40,21 +50,25 @@ class ChessDataset(Dataset):
                 unique_values = self.df[column].unique()
 
             # Create a lookup table
-            lookup_table = {value: idx for idx,
-                            value in enumerate(unique_values)}
+            lookup_table = {value: idx for idx, value in enumerate(unique_values)}
 
             # Add the lookup table to the dictionary
             self.lookup_tables[column] = lookup_table
 
         # Use the lookups to convert the columns to indices
         for column in tqdm.tqdm(self.df.columns, desc="Converting columns to indices"):
-            if self.df[column].dtype == "O" and self.df[column].apply(lambda x: isinstance(x, list)).any():
+            if (
+                self.df[column].dtype == "O"
+                and self.df[column].apply(lambda x: isinstance(x, list)).any()
+            ):
                 # Convert the column to indices
                 self.df[column] = self.df[column].map(
-                    lambda x: [self.lookup_tables[column][i] for i in x])
+                    lambda x: [self.lookup_tables[column][i] for i in x]
+                )
             else:
-                self.df[column] = self.df[column].map(
-                    self.lookup_tables[column]).astype("int32")
+                self.df[column] = (
+                    self.df[column].map(self.lookup_tables[column]).astype("int32")
+                )
 
     def __getitem__(self, index):
         """
