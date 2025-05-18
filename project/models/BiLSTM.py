@@ -73,7 +73,7 @@ class BiLSTM(nn.Module):
         optimizer = torch.optim.Adam(self.parameters(), self.lr)
         return optimizer
     
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch):
         """
         Perform a single training step.
         Args:
@@ -96,7 +96,7 @@ class BiLSTM(nn.Module):
             loss = self.loss_fn(logits, y)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch):
         """
         Perform a single validation step.
         Args:
@@ -117,7 +117,7 @@ class BiLSTM(nn.Module):
             loss = self.loss_fn(logits, y)
         return loss
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch):
         """
         Perform a single test step.
         Args:
