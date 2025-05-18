@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningDataModule
 
+from project.utils.collate import collate_fn_next_token
 from project.dataset.seq2seq import NextTokenDataset
 from project.db_utils import fetch_games
 from gensim.models import Word2Vec
@@ -13,7 +14,7 @@ class NextTokenDM(LightningDataModule):
     def __init__(
         self,
         database: str,
-        encoder_weights: str = None, 
+        encoder_weights: str = None,
         batch_size: int = 1,
         num_worker: int = 1,
         use_ram: bool = True
@@ -26,7 +27,7 @@ class NextTokenDM(LightningDataModule):
 
         if self.encoder_weights is not None:
             w2v = Word2Vec.load(self.encoder_weights)
-            vocab_table = None      
+            vocab_table = None
         else:
             w2v = None
             query = """
@@ -35,7 +36,7 @@ class NextTokenDM(LightningDataModule):
             """
             df = pd.read_sql_query(query, sqlite3.connect(self.database))
             vocab_table = df["move"].values
-        
+
         # get all game ids
         df = fetch_games(db_path=self.database)["game_id"].values
         # shuffle ids and get first 70% as train 20% val and 10% test
@@ -71,6 +72,7 @@ class NextTokenDM(LightningDataModule):
             self.batch_size,
             shuffle=True,
             num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
         )
 
     def val_dataloader(self):
@@ -79,6 +81,7 @@ class NextTokenDM(LightningDataModule):
             self.batch_size,
             shuffle=False,
             num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
         )
 
     def test_dataloader(self):
@@ -87,6 +90,7 @@ class NextTokenDM(LightningDataModule):
             self.batch_size,
             shuffle=False,
             num_workers=self.num_worker,
+            collate_fn=collate_fn_next_token,
         )
 
     def get_vocab_size(self) -> int:

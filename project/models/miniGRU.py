@@ -1,3 +1,5 @@
+# TODO: unit test on parallel scan          
+
 from typing import List, Tuple
 
 import torch
@@ -21,15 +23,18 @@ class MinimalRNN(Module):
     def _preprocessing(self, x: Tensor, h_0: Tensor) -> Tuple[Tensor, Tensor]:
         if h_0 is None:
             batch_size = x.shape[0]
-            # lets say we have a input of torch.ones in exponential space -> torch.zeros in log space
-            h_0 = torch.zeros((batch_size, 1, self.hidden_dim), device=x.device)
+            # lets say we have a input of torch.ones in exponential space
+            # -> torch.zeros in log space
+            h_0 = torch.zeros(
+                (batch_size, 1, self.hidden_dim), device=x.device)
 
         if self.flatten_input and len(x.shape) == 4:
-            # expect multichannel input like an image: (batch_size, channels, window_length, features)
+            # expect multichannel input like an image: (batch_size, channels,
+            # window_length, features)
             x = rearrange(x, "B C W F -> B W (F C)")
         elif self.flatten_input and len(x.shape) > 4:
             raise ValueError(
-                f"No flattening logik implemented for {type(self).__name__}"
+                f"No flattening logic implemented for {type(self).__name__}"
             )
         return x, h_0
 
@@ -95,19 +100,36 @@ class MinimalGRU(MinimalRNN):
                 h_0 (Tensor): (batch_size, hidden_dim). Defaults to None
 
             Returns: Tuple[out, hidden]
-                out (Tensor): (batch_size, output_size)
+                out (Tensor): (batchpython -m pyargwriter generate-argparser --input file1.py file2.py [--output OUTPUT_DIR] [--pretty] [--log-level LOG_LEVEL]_size, output_size)
                 hidden (Tensor): (batch_size, seq_len, hidden_dim)
         """
         x, h_0 = self._preprocessing(x, h_0)
+        
         latent = self.net.forward(x)
-        z = latent[..., : self.hidden_dim]
-        h_tilde = latent[..., self.hidden_dim :]
-        z = -self.softplus(-z)  # sigmoid(z) in log space
-        z_inv = -self.softplus(z)  # (1 - z) in log space
+        k = latent[..., : self.hidden_dim]
+        h_tilde = latent[..., self.hidden_dim:]
+        
+        log_z = -self.softplus(-k)  # sigmoid(z) in log space
+        log_coeffs = -self.softplus(log_z)  # (1 - z) in log space
 
         h_tilde = self.hidden_log_activation(h_tilde)
-        h_tilde = torch.cat([h_0, z + h_tilde], dim=1)
-        h = self.parallel_scan_log(z_inv, h_tilde)
+        h_0 = self.hidden_log_activation(h_0)
+        
+        log_values = torch.cat([h_0, log_z + h_tilde], dim=1)
+        # if torch.any(torch.isnan(log_values)):
+        #     print("x", x)
+        #     print("log_values", log_values)
+        #     print("log_coeffs", log_coeffs)
+        #     # save the tensors to a text file for debugging
+        #     with open("debug.txt", "w") as f:
+        #         f.write(f"x: {x.cpu().detach().tolist()}\n")
+        #         f.write(f"log_values: {log_values.cpu().detach().tolist()}\n")
+        #         f.write(f"log_coeffs: {log_coeffs.cpu().detach().tolist()}\n")
+        #         f.write(f"z: {z.cpu().detach().tolist()}\n")
+        #         f.write(f"latent: {latent.cpu().detach().tolist()}\n")
+        #     # raise an error
+        #     raise ValueError("log_values contains NaN values")
+        h = self.parallel_scan_log(log_coeffs, log_values)
 
         # transform
         out = self.out_layer.forward(h)

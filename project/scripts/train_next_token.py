@@ -9,17 +9,22 @@ from project.dataset.lit_module import NextTokenDM
 
 def train(model_type="rnn", max_epochs=10, lr=1e-3, checkpoint_dir="checkpoints"):
     # Get datamodule
-    dm = NextTokenDM("data/chess_games_1.db", num_worker=8, batch_size=1, use_ram=True)
+    dm = NextTokenDM("data/chess_games_1.db", num_worker=8,
+                     batch_size=32, use_ram=True)
 
     # Instantiate model
-    encoder_weight_location = "model_weights/word2vec.model"
+    encoder_weight_location = "project/models/word2vec100.model"
     model = NextTokenPredictor(
-        vocab_size=dm.get_vocab_size(),
+        vocab_size=dm.get_vocab_size() + 1,
         model_type=model_type,
         lr=lr,
-        word2vec=encoder_weight_location,
+        word2vec=None,  # encoder_weight_location,
         freeze_embeddings=True,
+        d_model=256,
+        n_layers=2,
     )
+    print(dm.get_vocab_size())
+    print(model)
 
     # Checkpointing and logging
     checkpoint_callback = ModelCheckpoint(

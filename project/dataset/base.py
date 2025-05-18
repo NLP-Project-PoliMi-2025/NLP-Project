@@ -48,4 +48,5 @@ class _ChessDataset(Dataset):
             return features
         else:
             idx = np.where(moves[:, None] == self.vocab_table[None])[1]
-            return idx
+            torch_idx = torch.from_numpy(idx)
+            return torch_idx
