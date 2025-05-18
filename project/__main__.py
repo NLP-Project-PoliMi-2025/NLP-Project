@@ -18,6 +18,15 @@ def execute(args: dict) -> bool:
                 checkpoint_dir=args["checkpoint_dir"],
             )
 
+        case "train-game-annotation":
+            module.train_game_annotation(
+                label=args["label"],
+                model_type=args["model_type"],
+                max_epochs=args["max_epochs"],
+                lr=args["lr"],
+                checkpoint_dir=args["checkpoint_dir"],
+            )
+
         case "start-chess-bot":
             module.start_chess_bot(
                 model_weights=args["model_weights"], start_fen=args["start_fen"]
