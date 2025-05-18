@@ -16,23 +16,23 @@ def train(
         "data/games_0001/val_100K.parquet",
         "data/games_0001/test_100K.parquet",
         32,
-        "Moves",
-        label,
+        ["Moves"],
+        [label],
         8,
     )
     dm.setup_all()
 
     # Instantiate model
     model = SeqAnnotator(
-        n_target_classes=dm.n_labels,
-        vocab_size=dm.vocab_size,
+        n_target_classes=dm.get_num_labels(),
+        vocab_size=dm.get_vocab_size(),
         d_model=256,
         n_layers=2,
         n_heads=4,
         dropout=0.1,
         lr=lr,
         model_type=model_type,
-        ignore_index=None,
+        ignore_index=0,
     )
     print(dm.get_vocab_size())
     print(model)
