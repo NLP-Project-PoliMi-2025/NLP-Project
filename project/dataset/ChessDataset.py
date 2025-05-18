@@ -3,16 +3,20 @@ from torch.utils.data import Dataset
 from typing import List
 import pandas as pd
 import tqdm
+import numpy as np
 
 
 class ChessDataset(Dataset):
     def __init__(
-        self, parquette_path: str, inputColumns: List[str], labelColumns: List[str]
+        self, parquette_path: str, inputColumns: List[str], labelColumns: List[str], lookupReference: 'ChessDataset' = None
     ):
         self.parquette_path = parquette_path
+        assert lookupReference is None or lookupReference.lookup_tables is not None, "Lookup tables reference has no lookup tables"
+        self.lookupReference = lookupReference
         self.inputColums = inputColumns
         self.labelColumns = labelColumns
 
+        self.__instantiateLookup()
         self.__load_parquet()
         self.__convertToIndices()
 
@@ -30,16 +34,24 @@ class ChessDataset(Dataset):
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
-    def __convertToIndices(self):
-        # For each column of the df build a lookup table
-        self.lookup_tables = {}
+    def __instantiateLookup(self):
+        if self.lookupReference is None:
+            self.lookup_tables = {}
+            return
 
+        self.lookup_tables = self.lookupReference.lookup_tables
+
+    def __checkToBeExploded(self, column):
+        return self.df[column].dtype == "O" and (
+            self.df[column].apply(lambda x: isinstance(x, list)).any() or
+            self.df[column].apply(
+                lambda x: isinstance(x, np.ndarray)).any()
+        )
+
+    def __convertToIndices(self):
         for column in tqdm.tqdm(self.df.columns, desc="Building lookup tables"):
             # Check if the type of the data is a list
-            if (
-                self.df[column].dtype == "O"
-                and self.df[column].apply(lambda x: isinstance(x, list)).any()
-            ):
+            if (self.__checkToBeExploded(column)):
                 # Explode the column
                 explodedColum = self.df[column].explode()
 
@@ -49,25 +61,36 @@ class ChessDataset(Dataset):
                 # Get the unique values in the column
                 unique_values = self.df[column].unique()
 
-            # Create a lookup table
-            lookup_table = {value: idx for idx, value in enumerate(unique_values)}
+            if column not in self.lookup_tables:
+                # Create a lookup table for the column
+                lookup_table = {}
+            else:
+                # Get the lookup table for the column
+                lookup_table = self.lookup_tables[column]
+
+            maxId = max(lookup_table.values()) if lookup_table else 0
+
+            for value in unique_values:
+                # Check if the value is already in the lookup table
+                if value not in lookup_table:
+                    # Add the value to the lookup table
+                    lookup_table[value] = maxId
+                    maxId += 1
 
             # Add the lookup table to the dictionary
             self.lookup_tables[column] = lookup_table
 
         # Use the lookups to convert the columns to indices
         for column in tqdm.tqdm(self.df.columns, desc="Converting columns to indices"):
-            if (
-                self.df[column].dtype == "O"
-                and self.df[column].apply(lambda x: isinstance(x, list)).any()
-            ):
+            if self.__checkToBeExploded(column):
                 # Convert the column to indices
                 self.df[column] = self.df[column].map(
                     lambda x: [self.lookup_tables[column][i] for i in x]
                 )
             else:
                 self.df[column] = (
-                    self.df[column].map(self.lookup_tables[column]).astype("int32")
+                    self.df[column].map(
+                        self.lookup_tables[column]).astype("int32")
                 )
 
     def __getitem__(self, index):
