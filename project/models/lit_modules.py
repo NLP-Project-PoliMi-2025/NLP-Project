@@ -56,7 +56,33 @@ class BoardFenPredictor(pl.LightningModule):
         return super().test_step()
 
     def configure_optimizers(self):
-        return super().configure_optimizers()
+        # Define the optimizer
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.lr)
+
+        # Calculate total steps (total_batches = steps per epoch * number of epochs)
+        total_steps = self.trainer.estimated_stepping_batches
+
+        # Define the OneCycleLR scheduler
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=self.lr,  # Peak learning rate
+            total_steps=total_steps,  # Total number of steps
+            pct_start=0.3,  # Percentage of the cycle spent increasing the learning rate
+            anneal_strategy="linear",  # Annealing strategy: 'linear' or 'cos'
+            div_factor=25.0,  # Initial learning rate = max_lr / div_factor
+            final_div_factor=1e4,  # Final learning rate = max_lr / final_div_factor
+        )
+
+        # Return optimizer and scheduler
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",  # Update the learning rate after every step
+                "frequency": 1,  # How often to call the scheduler
+            },
+        }
 
 
 class NextTokenPredictor(pl.LightningModule):
@@ -109,7 +135,8 @@ class NextTokenPredictor(pl.LightningModule):
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=d_model, nhead=n_heads, dropout=dropout, dim_feedforward=256
             )
-            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+            self.transformer = nn.TransformerEncoder(
+                encoder_layer, num_layers=n_layers)
 
         elif model_type == "mini-gru":
             self.rnn = MinimalGRU(
@@ -119,7 +146,8 @@ class NextTokenPredictor(pl.LightningModule):
             )
 
         else:
-            raise ValueError("model_type must be 'rnn' or 'transformer' or 'mini-gru")
+            raise ValueError(
+                "model_type must be 'rnn' or 'transformer' or 'mini-gru")
 
         self.fc_out = nn.Linear(d_model, vocab_size)
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab_size - 1)
@@ -163,7 +191,8 @@ class NextTokenPredictor(pl.LightningModule):
         trainable_params = torch.cat(
             [p.flatten() for p in self.parameters() if p.requires_grad]
         )
-        weight_decay_loss = torch.linalg.norm(trainable_params, 2) * self.weight_decay
+        weight_decay_loss = torch.linalg.norm(
+            trainable_params, 2) * self.weight_decay
 
         loss = loss + weight_decay_loss
 
@@ -218,7 +247,33 @@ class NextTokenPredictor(pl.LightningModule):
         self.log(f"{stage}_f1", f1)
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.lr)
+        # Define the optimizer
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.lr)
+
+        # Calculate total steps (total_batches = steps per epoch * number of epochs)
+        total_steps = self.trainer.estimated_stepping_batches
+
+        # Define the OneCycleLR scheduler
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=self.lr,  # Peak learning rate
+            total_steps=total_steps,  # Total number of steps
+            pct_start=0.3,  # Percentage of the cycle spent increasing the learning rate
+            anneal_strategy="linear",  # Annealing strategy: 'linear' or 'cos'
+            div_factor=25.0,  # Initial learning rate = max_lr / div_factor
+            final_div_factor=1e4,  # Final learning rate = max_lr / final_div_factor
+        )
+
+        # Return optimizer and scheduler
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",  # Update the learning rate after every step
+                "frequency": 1,  # How often to call the scheduler
+            },
+        }
 
 
 class SeqAnnotator(pl.LightningModule):
@@ -239,6 +294,7 @@ class SeqAnnotator(pl.LightningModule):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.save_hyperparameters()
         self.n_target_classes = n_target_classes
         self.vocab_size = vocab_size
         self.d_model = d_model
@@ -259,6 +315,10 @@ class SeqAnnotator(pl.LightningModule):
 
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         self.reg_loss_fn = nn.MSELoss()
+
+        self.example_input_array = torch.randint(
+            0, self.vocab_size, (1, 10), dtype=torch.long
+        ).to(self.device)
 
     def build_model(self):
         if self.word2vec is not None:
@@ -282,7 +342,8 @@ class SeqAnnotator(pl.LightningModule):
                 batch_first=True,
             )
         elif self.model_type == "transformer":
-            self.dim_map = nn.Linear(self.embedding.embedding_dim, self.d_model)
+            self.dim_map = nn.Linear(
+                self.embedding.embedding_dim, self.d_model)
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=self.d_model,
                 nhead=self.n_heads,
@@ -301,7 +362,8 @@ class SeqAnnotator(pl.LightningModule):
             )
 
         else:
-            raise ValueError("model_type must be 'rnn' or 'transformer' or 'mini-gru")
+            raise ValueError(
+                "model_type must be 'rnn' or 'transformer' or 'mini-gru")
 
         self.fc_out = nn.Sequential(
             nn.Linear(self.d_model, self.d_model),
@@ -331,7 +393,8 @@ class SeqAnnotator(pl.LightningModule):
     def training_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
 
         x, y = batch
-        logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
+        # (batch_size, seq_length, n_target_classes)
+        logits, _ = self.forward(x)
         logits = logits.contiguous().view(-1, self.n_target_classes)
         # pad the logits to account for the padding token
         logits = torch.cat(
@@ -342,11 +405,17 @@ class SeqAnnotator(pl.LightningModule):
         self.log("train_loss", loss)
 
         self.get_metrics(logits, y, "train")
+
+        # log learning rate
+        for param_group in self.optimizers().param_groups:
+            self.log("lr", param_group["lr"])
+
         return loss
 
     def validation_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
         x, y = batch
-        logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
+        # (batch_size, seq_length, n_target_classes)
+        logits, _ = self.forward(x)
         logits = logits.contiguous().view(-1, self.n_target_classes)
         logits = torch.cat(
             [torch.zeros((len(logits), 1), device=x.device), logits], dim=1
@@ -360,7 +429,8 @@ class SeqAnnotator(pl.LightningModule):
 
     def test_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
         x, y = batch
-        logits, _ = self.forward(x)  # (batch_size, seq_length, n_target_classes)
+        # (batch_size, seq_length, n_target_classes)
+        logits, _ = self.forward(x)
         logits = logits.contiguous().view(-1, self.n_target_classes)
         logits = torch.cat(
             [torch.zeros((len(logits), 1), device=x.device), logits], dim=1
@@ -406,4 +476,30 @@ class SeqAnnotator(pl.LightningModule):
         self.log(f"{stage}_f1", f1)
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.lr)
+        # Define the optimizer
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.lr)
+
+        # Calculate total steps (total_batches = steps per epoch * number of epochs)
+        total_steps = self.trainer.estimated_stepping_batches
+
+        # Define the OneCycleLR scheduler
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=self.lr,  # Peak learning rate
+            total_steps=total_steps,  # Total number of steps
+            pct_start=0.3,  # Percentage of the cycle spent increasing the learning rate
+            anneal_strategy="cos",  # Annealing strategy: 'linear' or 'cos'
+            div_factor=25.0,  # Initial learning rate = max_lr / div_factor
+            final_div_factor=1e4,  # Final learning rate = max_lr / final_div_factor
+        )
+
+        # Return optimizer and scheduler
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",  # Update the learning rate after every step
+                "frequency": 1,  # How often to call the scheduler
+            },
+        }
