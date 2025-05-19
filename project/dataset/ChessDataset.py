@@ -4,7 +4,7 @@ from typing import List
 import pandas as pd
 import tqdm
 import numpy as np
-
+from pyarrow.lib import ArrowInvalid
 
 class ChessDataset(Dataset):
     def __init__(
@@ -33,10 +33,14 @@ class ChessDataset(Dataset):
             " with columns ",
             self.inputColumns + self.labelColumns,
         )
-        # Load the parquet file
-        self.df = pd.read_parquet(
-            self.parquette_path, columns=self.inputColumns + self.labelColumns
-        )
+        try:
+            # Load the parquet file
+            self.df = pd.read_parquet(
+                self.parquette_path, columns=self.inputColumns + self.labelColumns
+            )
+        except ArrowInvalid as e:
+            print("columns: ", self.inputColumns +
+                  self.labelColumns, " not found")
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
@@ -94,7 +98,8 @@ class ChessDataset(Dataset):
                 )
             else:
                 self.df[column] = (
-                    self.df[column].map(self.lookup_tables[column]).astype("int32")
+                    self.df[column].map(
+                        self.lookup_tables[column]).astype("int32")
                 )
 
     def __getitem__(self, index):
