@@ -138,8 +138,7 @@ class NextTokenPredictor(pl.LightningModule):
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=d_model, nhead=n_heads, dropout=dropout, dim_feedforward=256
             )
-            self.transformer = nn.TransformerEncoder(
-                encoder_layer, num_layers=n_layers)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
 
         elif model_type == "mini-gru":
             self.rnn = MinimalGRU(
@@ -149,8 +148,7 @@ class NextTokenPredictor(pl.LightningModule):
             )
 
         else:
-            raise ValueError(
-                "model_type must be 'rnn' or 'transformer' or 'mini-gru")
+            raise ValueError("model_type must be 'rnn' or 'transformer' or 'mini-gru")
 
         self.fc_out = nn.Linear(d_model, vocab_size)
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab_size - 1)
@@ -194,8 +192,7 @@ class NextTokenPredictor(pl.LightningModule):
         trainable_params = torch.cat(
             [p.flatten() for p in self.parameters() if p.requires_grad]
         )
-        weight_decay_loss = torch.linalg.norm(
-            trainable_params, 2) * self.weight_decay
+        weight_decay_loss = torch.linalg.norm(trainable_params, 2) * self.weight_decay
 
         loss = loss + weight_decay_loss
 
@@ -375,8 +372,7 @@ class SeqAnnotator(pl.LightningModule):
             self.positional_encoding = SinusoidalPositionalEmbedding(
                 self.embedding.embedding_dim
             )
-            self.dim_map = nn.Linear(
-                self.embedding.embedding_dim, self.d_model)
+            self.dim_map = nn.Linear(self.embedding.embedding_dim, self.d_model)
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=self.d_model,
                 nhead=self.n_heads,
@@ -393,8 +389,7 @@ class SeqAnnotator(pl.LightningModule):
                 output_dim=self.d_model,
             )
         else:
-            raise ValueError(
-                "model_type must be 'lstm' or 'transformer' or 'mini-gru")
+            raise ValueError("model_type must be 'lstm' or 'transformer' or 'mini-gru")
 
         if self.bidirectional:
             core_out_dim = self.d_model * 2
@@ -421,8 +416,7 @@ class SeqAnnotator(pl.LightningModule):
             # add positional encoding
             seq_len = embedded.size(1)
             embedded = (
-                self.positional_encoding.forward(
-                    seq_len).to(embedded.device) + embedded
+                self.positional_encoding.forward(seq_len).to(embedded.device) + embedded
             )
             # Transformer expects (seq_len, batch, d_model)
             embedded = self.dim_map.forward(embedded)

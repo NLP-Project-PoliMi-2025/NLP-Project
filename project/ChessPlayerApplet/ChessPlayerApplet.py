@@ -26,8 +26,7 @@ class ChessPlayerApplet:
         self.padding_y = 14 / 350 * self.board_size
         self.square_size_x = (self.board_size - 2 * self.padding_x) / 8
         self.square_size_y = (self.board_size - 2 * self.padding_y) / 8
-        self.screen = pygame.display.set_mode(
-            (self.board_size, self.board_size))
+        self.screen = pygame.display.set_mode((self.board_size, self.board_size))
         self.clock = pygame.time.Clock()
         if fen:
             self.board = chess.Board(fen)
@@ -63,8 +62,7 @@ class ChessPlayerApplet:
             fill = {from_square: "#1E90FF"}
             for sq in possible_moves:
                 fill[sq] = "#32CD3280"
-            board_svg = chess.svg.board(
-                self.board, size=self.board_size, fill=fill)
+            board_svg = chess.svg.board(self.board, size=self.board_size, fill=fill)
         else:
             board_svg = chess.svg.board(self.board, size=self.board_size)
 
@@ -94,12 +92,13 @@ class ChessPlayerApplet:
 
                             if self.botActionFucntion is not None:
                                 legal_moves = self.getLegalMoves()
-                                legal_moves = [move.uci()
-                                               for move in legal_moves]
+                                legal_moves = [move.uci() for move in legal_moves]
                                 self.performAction(
-                                    chess.Move.from_uci(self.botActionFucntion(
-                                        self.UCImoves, legal_moves
-                                    ))
+                                    chess.Move.from_uci(
+                                        self.botActionFucntion(
+                                            self.UCImoves, legal_moves
+                                        )
+                                    )
                                 )
 
                         self.current_start = None
@@ -114,8 +113,7 @@ class ChessPlayerApplet:
                             == chess.parse_square(self.current_start)
                         ]
                         if len(possible_moves) == 0:
-                            print(
-                                f"No possible moves from {self.current_start}")
+                            print(f"No possible moves from {self.current_start}")
                             self.current_start = None
                         self.render_board(self.current_start)
             self.clock.tick(60)

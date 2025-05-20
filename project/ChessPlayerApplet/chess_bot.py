@@ -36,9 +36,11 @@ class ChessBot:
         if legal_moves == []:
             raise ValueError("No legal moves available")
         past_moves_embeds = torch.tensor(
-            [self.moves_vocab_table[move] for move in past_moves])
+            [self.moves_vocab_table[move] for move in past_moves]
+        )
         legal_moves_embeds = torch.tensor(
-            [self.moves_vocab_table[move] for move in legal_moves])
+            [self.moves_vocab_table[move] for move in legal_moves]
+        )
 
         # get the model prediction
         with torch.no_grad():
