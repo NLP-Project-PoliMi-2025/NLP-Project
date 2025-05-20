@@ -40,7 +40,13 @@ class ChessDataset(Dataset):
                 self.parquette_path, columns=self.inputColumns + self.labelColumns
             )
         except ArrowInvalid as e:
-            print("columns: ", self.inputColumns + self.labelColumns, " not found")
+            raise ValueError(
+                "columns: ", self.inputColumns + self.labelColumns, " not found"
+            ) from e
+        except FileNotFoundError as e:
+            raise ValueError("File not found: ", self.parquette_path) from e
+        except Exception as e:
+            raise ValueError("Error loading parquet file: ", self.parquette_path) from e
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 

@@ -8,6 +8,7 @@ from gensim.models import Word2Vec
 
 from project.models.miniGRU import MinimalGRU
 from project.models.position_encoding import SinusoidalPositionalEmbedding
+from project.utils.arithmatic import get_last_nonzero_indices, pad_last_dim
 
 # metrics from sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -281,6 +282,7 @@ class SeqAnnotator(pl.LightningModule):
     def __init__(
         self,
         n_target_classes: int,
+        label: str,
         vocab_size: int,
         d_model=256,
         n_layers=2,
@@ -292,12 +294,15 @@ class SeqAnnotator(pl.LightningModule):
         word2vec: str = None,
         freeze_embeddings: bool = False,
         label_counts: pd.DataFrame = None,
+        bidirectional: bool = False,
+        logging_last_token_metrics: bool = False,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.save_hyperparameters()
         self.n_target_classes = n_target_classes
+        self.label = label
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.n_layers = n_layers
@@ -308,6 +313,8 @@ class SeqAnnotator(pl.LightningModule):
         self.ignore_index = ignore_index
         self.word2vec = word2vec
         self.freeze_embeddings = freeze_embeddings
+        self.bidirectional = bidirectional
+        self.logging_last_token_metrics = logging_last_token_metrics
 
         self.embedding: nn.Embedding
         self.rnn: nn.Module
@@ -322,9 +329,11 @@ class SeqAnnotator(pl.LightningModule):
             loss_weights = np.concatenate([np.zeros(1), loss_weights])
         else:
             loss_weights = np.ones(self.n_target_classes + 1)
-        print(f"Loss weights: {loss_weights}")
+
         self.loss_fn = nn.CrossEntropyLoss(
-            weight=torch.from_numpy(loss_weights).float(), ignore_index=self.ignore_index)
+            weight=torch.from_numpy(loss_weights).float(),
+            ignore_index=self.ignore_index,
+        )
         self.reg_loss_fn = nn.MSELoss()
 
         self.example_input_array = torch.randint(
@@ -345,12 +354,22 @@ class SeqAnnotator(pl.LightningModule):
         else:
             self.embedding = nn.Embedding(self.vocab_size, self.d_model)
 
+        core_out_dim = self.d_model
         if self.model_type == "lstm":
             self.rnn = nn.LSTM(
                 input_size=self.embedding.embedding_dim,
                 hidden_size=self.d_model,
                 num_layers=self.n_layers,
                 batch_first=True,
+                bidirectional=self.bidirectional,
+            )
+        elif self.model_type == "gru":
+            self.rnn = nn.GRU(
+                input_size=self.embedding.embedding_dim,
+                hidden_size=self.d_model,
+                num_layers=self.n_layers,
+                batch_first=True,
+                bidirectional=self.bidirectional,
             )
         elif self.model_type == "transformer":
             self.positional_encoding = SinusoidalPositionalEmbedding(
@@ -367,37 +386,44 @@ class SeqAnnotator(pl.LightningModule):
             self.transformer = nn.TransformerEncoder(
                 encoder_layer, num_layers=self.n_layers
             )
-
         elif self.model_type == "mini-gru":
             self.rnn = MinimalGRU(
                 input_dim=self.embedding.embedding_dim,
                 hidden_dim=self.d_model,
                 output_dim=self.d_model,
             )
-
         else:
             raise ValueError(
                 "model_type must be 'lstm' or 'transformer' or 'mini-gru")
 
+        if self.bidirectional:
+            core_out_dim = self.d_model * 2
+
         self.fc_out = nn.Sequential(
-            nn.Linear(self.d_model, self.d_model),
+            nn.Linear(core_out_dim, self.d_model),
             nn.ReLU(),
             nn.Linear(self.d_model, self.n_target_classes),
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(
+        self, x: Tensor, logits: bool = False, hx: Tensor = None
+    ) -> Tuple[Tensor, Tensor]:
         """
         x: (batch, seq_len)
         """
         embedded = self.embedding(x)  # (batch, seq_len, d_model)
-        if self.model_type in ["lstm", "mini-gru"]:
-            output, hidden = self.rnn(embedded)
+        if self.model_type in ["gru", "lstm", "mini-gru"]:
+            output, hidden = self.rnn.forward(
+                embedded,
+            )
         else:  # Transformer
             # add positional encoding
             seq_len = embedded.size(1)
-            embedded = self.positional_encoding.forward(
-                seq_len).to(embedded.device) + embedded
+            embedded = (
+                self.positional_encoding.forward(
+                    seq_len).to(embedded.device) + embedded
+            )
             # Transformer expects (seq_len, batch, d_model)
             embedded = self.dim_map.forward(embedded)
             embedded = embedded.permute(1, 0, 2)
@@ -405,19 +431,26 @@ class SeqAnnotator(pl.LightningModule):
             # back to (batch, seq_len, d_model)
             output = output.permute(1, 0, 2)
             hidden = None
-        logits = self.fc_out(output)  # (batch, seq_len, vocab_size)
-        return logits, hidden
+
+        if logits:
+            # Adjust index based on desired layer
+            partial_model = nn.Sequential(*list(self.fc_out.children())[:-1])
+            output = partial_model(output)
+        else:
+            output = self.fc_out(output)  # (batch, seq_len, vocab_size)
+
+        return output, hidden
 
     def training_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
-        logits = logits.contiguous().view(-1, self.n_target_classes)
-        # pad the logits to account for the padding token
-        logits = torch.cat(
-            [torch.zeros((len(logits), 1), device=x.device), logits], dim=1
-        )
+        logits = pad_last_dim(logits, pad_value=0)
+        self.get_last_token_metrics(logits, y, "train")
+
+        logits = logits.contiguous().view(-1, self.n_target_classes + 1)
         y = y.contiguous().view(-1)
+
         loss = self.loss_fn(logits, y)
         self.log("train/loss", loss)
 
@@ -433,11 +466,12 @@ class SeqAnnotator(pl.LightningModule):
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
-        logits = logits.contiguous().view(-1, self.n_target_classes)
-        logits = torch.cat(
-            [torch.zeros((len(logits), 1), device=x.device), logits], dim=1
-        )
+        logits = pad_last_dim(logits, pad_value=0)
+        self.get_last_token_metrics(logits, y, "val")
+
+        logits = logits.contiguous().view(-1, self.n_target_classes + 1)
         y = y.contiguous().view(-1)
+
         loss = self.loss_fn(logits, y)
         self.log("val/loss", loss)
 
@@ -448,15 +482,17 @@ class SeqAnnotator(pl.LightningModule):
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
-        logits = logits.contiguous().view(-1, self.n_target_classes)
-        logits = torch.cat(
-            [torch.zeros((len(logits), 1), device=x.device), logits], dim=1
-        )
+        logits = pad_last_dim(logits, pad_value=0)
+        self.get_last_token_metrics(logits, y, "test")
+
+        logits = logits.contiguous().view(-1, self.n_target_classes + 1)
         y = y.contiguous().view(-1)
+
         loss = self.loss_fn(logits, y)
         self.log("test/loss", loss)
 
         self.get_metrics(logits, y, "test")
+
         return loss
 
     def get_metrics(self, logits: torch.Tensor, y: torch.Tensor, stage: str):
@@ -491,6 +527,48 @@ class SeqAnnotator(pl.LightningModule):
         # do f1 for multi-class classification
         f1 = f1_score(y, preds, average="weighted")
         self.log(f"{stage}/f1", f1)
+
+    def get_last_token_metrics(self, logits: torch.Tensor, y: torch.Tensor, stage: str):
+        if not self.logging_last_token_metrics or self.label not in [
+            "termination_seqs",
+            "result_seqs",
+        ]:
+            return
+
+        preds = torch.argmax(logits, dim=-1)
+
+        # compute metrics only for the last token
+        indices = get_last_nonzero_indices(y)
+        if len(y.shape) == 1:
+            indices = indices.unsqueeze(0)
+            preds = preds.unsqueeze(0)
+
+        batch_size = indices.shape[0]
+        y = y[torch.arange(batch_size), indices].cpu().numpy()
+        preds = preds[torch.arange(batch_size), indices].cpu().numpy()
+
+        # do accuracy for multi-class classification
+        acc = accuracy_score(y, preds)
+        self.log(f"{stage}/acc_last", acc)
+        # do precision for multi-class classification
+        precision = precision_score(
+            y,
+            preds,
+            average="weighted",
+            zero_division=0,
+        )
+        self.log(f"{stage}/precision_last", precision)
+        # do recall for multi-class classification
+        recall = recall_score(
+            y,
+            preds,
+            average="weighted",
+            zero_division=0,
+        )
+        self.log(f"{stage}/recall_last", recall)
+        # do f1 for multi-class classification
+        f1 = f1_score(y, preds, average="weighted")
+        self.log(f"{stage}/f1_last", f1)
 
     def configure_optimizers(self):
         # Define the optimizer

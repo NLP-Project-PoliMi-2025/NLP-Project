@@ -10,7 +10,15 @@ from datetime import datetime
 
 
 def train(
-    label: str, model_type="rnn", max_epochs=10, lr=1e-3, checkpoint_dir="checkpoints"
+    label: str, 
+    model_type: str = "rnn", 
+    max_epochs: int = 10,
+    lr: float = 1e-3,
+    checkpoint_dir: str = "checkpoints",
+    bidirectional: bool = True,
+    num_layers: int = 2,
+    d_model: int = 512,
+    log_last_token_metrics: bool = False,
 ):
     torch.set_float32_matmul_precision("medium")
     # Get datamodule
@@ -28,9 +36,10 @@ def train(
     # Instantiate model
     model = SeqAnnotator(
         n_target_classes=dm.get_num_labels()[0],
+        label=label,
         vocab_size=dm.get_vocab_size()[0],
-        d_model=512,
-        n_layers=2,
+        d_model=d_model,
+        n_layers=num_layers,
         n_heads=4,
         dropout=0.1,
         lr=lr,
@@ -38,7 +47,9 @@ def train(
         ignore_index=0,
         freeze_embeddings=True,
         word2vec="model_weights/word2vec.model",
-        label_counts=dm.fit_set.df[label].explode().value_counts()
+        label_counts=dm.fit_set.df[label].explode().value_counts(),
+        bidirectional=bidirectional,
+        logging_last_token_metrics=log_last_token_metrics,
     )
     print(dm.get_vocab_size())
     print(model)
@@ -58,7 +69,7 @@ def train(
         project="NLP-chess",
         name=f"{model_type}-{label}-{datetime.now().strftime("%Y%m%d%H%M%S")}",
         save_dir=f"wandb_logs/{label}/{model_type}",
-        log_model=True,
+        log_model=False,
     )
     # Trainer
     trainer = Trainer(
