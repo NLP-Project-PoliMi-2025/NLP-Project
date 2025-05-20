@@ -54,7 +54,13 @@ class ChessBot:
 
         # Epsilon greedy action selection
         if torch.rand(1).item() < self.epsilon:
-            action = np.random.choice(legal_moves)
+            action_idx = np.random.choice(len(legal_moves))
+            rand_action = True
         else:
-            action = legal_moves[torch.argmax(preds).item()]
+            action_idx = torch.argmax(preds).item()
+            rand_action = False
+
+        print(
+            f"Predicted action index: {action_idx}, Certainty: {preds[action_idx].item()}, Entropy: {-torch.sum(preds * torch.log(preds + 1e-10)).item()}, Random: {rand_action}")
+        action = legal_moves[action_idx]
         return action

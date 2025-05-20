@@ -58,5 +58,5 @@ class EntryPoint:
             bot_starts=bot_starts,
             epsilon=epsilone_greedy,
         )
-        applet = ChessPlayerApplet(fen=start_fen, botActionFucntion=chess_bot)
+        applet = ChessPlayerApplet(fen=start_fen, botActionFunction=chess_bot)
         applet.run()
