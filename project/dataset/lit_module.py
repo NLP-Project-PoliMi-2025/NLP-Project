@@ -142,9 +142,9 @@ class SeqAnnotationDM(LightningDataModule):
             numLabels.append(len(self.test_set.lookup_tables[column]))
         return tuple(numLabels)
 
-    def setup(self, stage = None):
+    def setup(self, stage=None):
         if self.fit_set is not None:
-            return 
+            return
         self.fit_set = ChessDataset(
             self.fit_file,
             self.input_column,
