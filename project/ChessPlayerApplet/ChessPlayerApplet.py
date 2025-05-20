@@ -56,21 +56,17 @@ class ChessPlayerApplet:
         if start is not None:
             from_square = chess.parse_square(start)
             possible_moves = [
-                move.to_square for move in self.board.legal_moves if move.from_square == from_square
+                move.to_square
+                for move in self.board.legal_moves
+                if move.from_square == from_square
             ]
             fill = {from_square: "#1E90FF"}
             for sq in possible_moves:
                 fill[sq] = "#32CD3280"
             board_svg = chess.svg.board(
-                self.board,
-                size=self.board_size,
-                fill=fill
-            )
+                self.board, size=self.board_size, fill=fill)
         else:
-            board_svg = chess.svg.board(
-                self.board,
-                size=self.board_size
-            )
+            board_svg = chess.svg.board(self.board, size=self.board_size)
 
         board_png = cairosvg.svg2png(bytestring=board_svg)
         background = pygame.image.load(io.BytesIO(board_png)).convert_alpha()
@@ -88,9 +84,11 @@ class ChessPlayerApplet:
                     current_pointer = self.pos2uci(event.pos)
                     if self.current_start and current_pointer != self.current_start:
                         move = chess.Move.from_uci(
-                            f"{self.current_start}{current_pointer}")
+                            f"{self.current_start}{current_pointer}"
+                        )
                         print(
-                            f'Trying to move {self.current_start} to {current_pointer}')
+                            f"Trying to move {self.current_start} to {current_pointer}"
+                        )
                         if move in self.board.legal_moves:
                             self.performAction(move)
 
@@ -104,7 +102,10 @@ class ChessPlayerApplet:
                         self.current_start = current_pointer
                         # Check if there are possible moves from the current square
                         possible_moves = [
-                            move.to_square for move in self.board.legal_moves if move.from_square == chess.parse_square(self.current_start)
+                            move.to_square
+                            for move in self.board.legal_moves
+                            if move.from_square
+                            == chess.parse_square(self.current_start)
                         ]
                         if len(possible_moves) == 0:
                             print(

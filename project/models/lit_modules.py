@@ -7,9 +7,12 @@ import pytorch_lightning as pl
 from gensim.models import Word2Vec
 
 from project.models.miniGRU import MinimalGRU
+from project.models.position_encoding import SinusoidalPositionalEmbedding
 
 # metrics from sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pandas as pd
+import numpy as np
 
 
 class BoardFenPredictor(pl.LightningModule):
@@ -57,8 +60,7 @@ class BoardFenPredictor(pl.LightningModule):
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches
@@ -248,8 +250,7 @@ class NextTokenPredictor(pl.LightningModule):
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches
@@ -286,10 +287,11 @@ class SeqAnnotator(pl.LightningModule):
         n_heads=4,
         dropout=0.1,
         lr=1e-3,
-        model_type="rnn",  # 'rnn' or 'transformer'
+        model_type="lstm",  # 'lstm' or 'transformer'
         ignore_index: int = None,
         word2vec: str = None,
         freeze_embeddings: bool = False,
+        label_counts: pd.DataFrame = None,
         *args,
         **kwargs,
     ):
@@ -313,7 +315,16 @@ class SeqAnnotator(pl.LightningModule):
         self.fc_out: nn.Module
         self.build_model()
 
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+        if label_counts is not None:
+            loss_weights = 1 / label_counts
+            loss_weights = loss_weights / loss_weights.sum()
+            loss_weights = loss_weights.sort_index().values
+            loss_weights = np.concatenate([np.zeros(1), loss_weights])
+        else:
+            loss_weights = np.ones(self.n_target_classes + 1)
+        print(f"Loss weights: {loss_weights}")
+        self.loss_fn = nn.CrossEntropyLoss(
+            weight=torch.from_numpy(loss_weights).float(), ignore_index=self.ignore_index)
         self.reg_loss_fn = nn.MSELoss()
 
         self.example_input_array = torch.randint(
@@ -334,7 +345,7 @@ class SeqAnnotator(pl.LightningModule):
         else:
             self.embedding = nn.Embedding(self.vocab_size, self.d_model)
 
-        if self.model_type == "rnn":
+        if self.model_type == "lstm":
             self.rnn = nn.LSTM(
                 input_size=self.embedding.embedding_dim,
                 hidden_size=self.d_model,
@@ -342,6 +353,9 @@ class SeqAnnotator(pl.LightningModule):
                 batch_first=True,
             )
         elif self.model_type == "transformer":
+            self.positional_encoding = SinusoidalPositionalEmbedding(
+                self.embedding.embedding_dim
+            )
             self.dim_map = nn.Linear(
                 self.embedding.embedding_dim, self.d_model)
             encoder_layer = nn.TransformerEncoderLayer(
@@ -363,7 +377,7 @@ class SeqAnnotator(pl.LightningModule):
 
         else:
             raise ValueError(
-                "model_type must be 'rnn' or 'transformer' or 'mini-gru")
+                "model_type must be 'lstm' or 'transformer' or 'mini-gru")
 
         self.fc_out = nn.Sequential(
             nn.Linear(self.d_model, self.d_model),
@@ -377,9 +391,13 @@ class SeqAnnotator(pl.LightningModule):
         x: (batch, seq_len)
         """
         embedded = self.embedding(x)  # (batch, seq_len, d_model)
-        if self.model_type in ["rnn", "mini-gru"]:
+        if self.model_type in ["lstm", "mini-gru"]:
             output, hidden = self.rnn(embedded)
         else:  # Transformer
+            # add positional encoding
+            seq_len = embedded.size(1)
+            embedded = self.positional_encoding.forward(
+                seq_len).to(embedded.device) + embedded
             # Transformer expects (seq_len, batch, d_model)
             embedded = self.dim_map.forward(embedded)
             embedded = embedded.permute(1, 0, 2)
@@ -391,7 +409,6 @@ class SeqAnnotator(pl.LightningModule):
         return logits, hidden
 
     def training_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
-
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
@@ -402,7 +419,7 @@ class SeqAnnotator(pl.LightningModule):
         )
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
-        self.log("train_loss", loss)
+        self.log("train/loss", loss)
 
         self.get_metrics(logits, y, "train")
 
@@ -422,7 +439,7 @@ class SeqAnnotator(pl.LightningModule):
         )
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
-        self.log("val_loss", loss)
+        self.log("val/loss", loss)
 
         self.get_metrics(logits, y, "val")
         return loss
@@ -437,7 +454,7 @@ class SeqAnnotator(pl.LightningModule):
         )
         y = y.contiguous().view(-1)
         loss = self.loss_fn(logits, y)
-        self.log("test_loss", loss)
+        self.log("test/loss", loss)
 
         self.get_metrics(logits, y, "test")
         return loss
@@ -454,7 +471,7 @@ class SeqAnnotator(pl.LightningModule):
 
         # do accuracy for multi-class classification
         acc = accuracy_score(y, preds)
-        self.log(f"{stage}_acc", acc)
+        self.log(f"{stage}/acc", acc)
         # do precision for multi-class classification
         precision = precision_score(
             y,
@@ -462,7 +479,7 @@ class SeqAnnotator(pl.LightningModule):
             average="weighted",
             zero_division=0,
         )
-        self.log(f"{stage}_precision", precision)
+        self.log(f"{stage}/precision", precision)
         # do recall for multi-class classification
         recall = recall_score(
             y,
@@ -470,15 +487,14 @@ class SeqAnnotator(pl.LightningModule):
             average="weighted",
             zero_division=0,
         )
-        self.log(f"{stage}_recall", recall)
+        self.log(f"{stage}/recall", recall)
         # do f1 for multi-class classification
         f1 = f1_score(y, preds, average="weighted")
-        self.log(f"{stage}_f1", f1)
+        self.log(f"{stage}/f1", f1)
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches

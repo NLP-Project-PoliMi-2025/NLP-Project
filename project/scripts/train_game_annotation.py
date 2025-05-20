@@ -1,11 +1,12 @@
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger, WandbLogger
 from project.models.lit_modules import (
     SeqAnnotator,
 )  # or wherever the model is defined
-from project.dataset.lit_module import NextTokenDM, SeqAnnotationDM
+from project.dataset.lit_module import SeqAnnotationDM
 import torch
+from datetime import datetime
 
 
 def train(
@@ -36,33 +37,58 @@ def train(
         model_type=model_type,
         ignore_index=0,
         freeze_embeddings=True,
-        word2vec="model_weights/word2vec.model"
+        word2vec="model_weights/word2vec.model",
+        label_counts=dm.fit_set.df[label].explode().value_counts()
     )
     print(dm.get_vocab_size())
     print(model)
 
     # Checkpointing and logging
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
+        monitor="val/loss",
         save_top_k=1,
         mode="min",
-        dirpath=checkpoint_dir,
+        dirpath=checkpoint_dir + "/" + label,
         filename=f"{model_type}-best",
     )
 
-    csv_logger = CSVLogger("csv_logs", name=model_type)
-    tb_logger = TensorBoardLogger("tb_logs", name=model_type)
+    csv_logger = CSVLogger(f"csv_logs/{label}", name=model_type)
+    tb_logger = TensorBoardLogger(f"tb_logs/{label}", name=model_type)
+    wb_logger = WandbLogger(
+        project="NLP-chess",
+        name=f"{model_type}-{label}-{datetime.now().strftime("%Y%m%d%H%M%S")}",
+        save_dir=f"wandb_logs/{label}/{model_type}",
+        log_model=True,
+    )
     # Trainer
     trainer = Trainer(
         max_epochs=max_epochs,
         callbacks=[checkpoint_callback],
-        logger=[csv_logger, tb_logger],
+        logger=[csv_logger, tb_logger, wb_logger],
         accelerator="auto",
         devices="auto",
     )
 
     # Fit model
     trainer.fit(model, dm)
-
     print(f"Best model saved at: {checkpoint_callback.best_model_path}")
+
+    # Test best model
+    model = SeqAnnotator.load_from_checkpoint(
+        checkpoint_callback.best_model_path,
+        n_target_classes=dm.get_num_labels()[0],
+        vocab_size=dm.get_vocab_size()[0],
+        d_model=512,
+        n_layers=2,
+        n_heads=4,
+        dropout=0.1,
+        lr=lr,
+        model_type=model_type,
+        ignore_index=0,
+        freeze_embeddings=True,
+        word2vec="model_weights/word2vec.model",
+    )
+    model.eval()
+    test_results = trainer.test(model, dataloaders=dm.test_dataloader())
+    print(f"Test results: {test_results}")
     return model

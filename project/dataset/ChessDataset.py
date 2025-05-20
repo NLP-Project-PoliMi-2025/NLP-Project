@@ -6,6 +6,7 @@ import tqdm
 import numpy as np
 from pyarrow.lib import ArrowInvalid
 
+
 class ChessDataset(Dataset):
     def __init__(
         self,
@@ -39,8 +40,7 @@ class ChessDataset(Dataset):
                 self.parquette_path, columns=self.inputColumns + self.labelColumns
             )
         except ArrowInvalid as e:
-            print("columns: ", self.inputColumns +
-                  self.labelColumns, " not found")
+            print("columns: ", self.inputColumns + self.labelColumns, " not found")
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
@@ -52,6 +52,19 @@ class ChessDataset(Dataset):
         self.lookup_tables = self.lookupReference.lookup_tables
 
     def __checkToBeExploded(self, column):
+        """
+        Checks if a specified DataFrame column should be "exploded" based on its data type and contents.
+
+        A column is considered to be exploded if:
+        - Its dtype is 'object' (typically string or mixed types in pandas), and
+        - It contains at least one element that is a list or a NumPy ndarray.
+
+        Args:
+            column (str): The name of the column to check in the DataFrame.
+
+        Returns:
+            bool: True if the column should be exploded (i.e., contains lists or ndarrays), False otherwise.
+        """
         return self.df[column].dtype == "O" and (
             self.df[column].apply(lambda x: isinstance(x, list)).any()
             or self.df[column].apply(lambda x: isinstance(x, np.ndarray)).any()
@@ -98,8 +111,7 @@ class ChessDataset(Dataset):
                 )
             else:
                 self.df[column] = (
-                    self.df[column].map(
-                        self.lookup_tables[column]).astype("int32")
+                    self.df[column].map(self.lookup_tables[column]).astype("int32")
                 )
 
     def __getitem__(self, index):

@@ -174,5 +174,7 @@ cython_debug/
 .pypirc
 
 data/
+*_logs/
+checkpoints/
 
 *.db
