@@ -2,6 +2,7 @@ import numpy as np
 from torch import nn
 import torch
 
+
 class SinusoidalPositionalEmbedding(nn.Module):
     def __init__(self, embedding_dim):
         super().__init__()

@@ -23,6 +23,8 @@ class BiLSTM(nn.Module):
         word2vec=None,
         freeze_embeddings=False,
         lr=1e-3,
+        n_layers=1,
+        batch_first=True,
     ):
         """
         Args:
@@ -38,7 +40,11 @@ class BiLSTM(nn.Module):
         super(BiLSTM, self).__init__()
         # Bidirectional LSTM; we set batch_first=True to have input like [batch, seq_len, embedding_dim]
         self.lstm = nn.LSTM(
-            embedding_dim, hidden_dim, bidirectional=True, batch_first=True
+            embedding_dim,
+            hidden_dim,
+            bidirectional=True,
+            batch_first=batch_first,
+            num_layers=n_layers,
         )
         # Fully connected layer to map hidden state coming from LSTM to output labels
         # (the hidden state is a concatenation of two LSTM outputs since it is bidirectional)
@@ -85,7 +91,7 @@ class BiLSTM(nn.Module):
         """
         optimizer = torch.optim.Adam(self.parameters(), self.lr)
         return optimizer
-    
+
     def training_step(self, batch):
         """
         Perform a single training step.
