@@ -4,7 +4,7 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from project.models.lit_modules import (
     SeqAnnotator,
 )  # or wherever the model is defined
-from project.dataset.lit_module import NextTokenDM, SeqAnnotationDM
+from project.dataset.lit_module import SeqAnnotationDM
 import torch
 
 
@@ -24,6 +24,8 @@ def train(
     )
     dm.setup()
 
+
+
     # Instantiate model
     model = SeqAnnotator(
         n_target_classes=dm.get_num_labels()[0],
@@ -36,7 +38,8 @@ def train(
         model_type=model_type,
         ignore_index=0,
         freeze_embeddings=True,
-        word2vec="model_weights/word2vec.model"
+        word2vec="model_weights/word2vec.model",
+        label_counts=dm.fit_set.df[label].explode().value_counts()
     )
     print(dm.get_vocab_size())
     print(model)
@@ -46,12 +49,12 @@ def train(
         monitor="val_loss",
         save_top_k=1,
         mode="min",
-        dirpath=checkpoint_dir,
+        dirpath=checkpoint_dir + "/" + label,
         filename=f"{model_type}-best",
     )
 
-    csv_logger = CSVLogger("csv_logs", name=model_type)
-    tb_logger = TensorBoardLogger("tb_logs", name=model_type)
+    csv_logger = CSVLogger(f"csv_logs/{label}", name=model_type)
+    tb_logger = TensorBoardLogger(f"tb_logs/{label}", name=model_type)
     # Trainer
     trainer = Trainer(
         max_epochs=max_epochs,
