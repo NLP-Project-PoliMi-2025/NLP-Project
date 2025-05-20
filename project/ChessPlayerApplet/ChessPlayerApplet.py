@@ -9,7 +9,7 @@ import random
 
 
 class ChessPlayerApplet:
-    def __init__(self, board_size=800, fen=None, botActionFucntion=None):
+    def __init__(self, board_size=800, fen=None, botActionFunction=None):
         """ChessPlayerApplet is a class that creates a chess applet using Pygame and the python-chess library.
         It allows the user to play chess against a bot or another player. The applet displays the chessboard and pieces,
         handles user input, and updates the board state.
@@ -34,7 +34,7 @@ class ChessPlayerApplet:
         else:
             self.board = chess.Board()
         self.current_start = None
-        self.botActionFucntion = botActionFucntion
+        self.botActionFunction = botActionFunction
 
     def pos2uci(self, pos):
         # Convert pixel position to UCI format
@@ -92,8 +92,8 @@ class ChessPlayerApplet:
                         if move in self.board.legal_moves:
                             self.performAction(move)
 
-                            if self.botActionFucntion is not None:
-                                self.performAction(self.botActionFucntion(
+                            if self.botActionFunction is not None:
+                                self.performAction(self.botActionFunction(
                                     self.UCImoves, self.getLegalMoves()))
 
                         self.current_start = None
@@ -158,5 +158,5 @@ if __name__ == "__main__":
         return random.choice(legalMoves) if legalMoves else None
     # Example: start from a position after 1.e4 e5 2.Nf3 Nc6 3.Bb5
     test_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
-    applet = ChessPlayerApplet(fen=test_fen, botActionFucntion=randomBot)
+    applet = ChessPlayerApplet(fen=test_fen, botActionFunction=randomBot)
     applet.run()
