@@ -115,6 +115,7 @@ class SeqAnnotationDM(LightningDataModule):
         input_column: str,
         label_column: str,
         num_worker: int = 1,
+        rollback_label: bool = True,
     ):
         super().__init__()
         self.fit_file = train_file
@@ -125,6 +126,7 @@ class SeqAnnotationDM(LightningDataModule):
         self.input_column = input_column
         self.label_column = label_column
         self.num_worker = num_worker
+        self.rollback_label = rollback_label
 
         self.fit_set: ChessDataset = None
         self.validate_set: ChessDataset = None
@@ -150,19 +152,22 @@ class SeqAnnotationDM(LightningDataModule):
             self.input_column,
             self.label_column,
             None,
-        )
+            label_rollback=self.rollback_label,
+            )
         self.validate_set = ChessDataset(
             self.validate_file,
             self.input_column,
             self.label_column,
             self.fit_set,
-        )
+            label_rollback=self.rollback_label,
+            )
         self.test_set = ChessDataset(
             self.test_file,
             self.input_column,
             self.label_column,
             self.validate_set,
-        )
+            label_rollback=self.rollback_label,
+            )
         self.lookUps = self.test_set.lookup_tables
 
     def train_dataloader(self):

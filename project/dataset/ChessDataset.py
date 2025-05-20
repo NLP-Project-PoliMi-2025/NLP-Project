@@ -14,6 +14,7 @@ class ChessDataset(Dataset):
         inputColumns: List[str],
         labelColumns: List[str],
         lookupReference: "ChessDataset" = None,
+        label_rollback: bool = False
     ):
         self.parquette_path = parquette_path
         assert (
@@ -22,10 +23,13 @@ class ChessDataset(Dataset):
         self.lookupReference = lookupReference
         self.inputColumns = inputColumns
         self.labelColumns = labelColumns
+        self.label_rollback = label_rollback
 
         self.__instantiateLookup()
         self.__load_parquet()
         self.__convertToIndices()
+        self.__check_label_rollback()
+
 
     def __load_parquet(self):
         print(
@@ -69,7 +73,20 @@ class ChessDataset(Dataset):
             self.df[column].apply(lambda x: isinstance(x, list)).any()
             or self.df[column].apply(lambda x: isinstance(x, np.ndarray)).any()
         )
-
+    
+    def __check_label_rollback(self):
+        # check if the label_rollback is applicable to all label columns
+        
+        for column in self.labelColumns:
+            # element in a label column can not be a list or a numpy array
+            if self.df[column].dtype == "O" and (
+                self.df[column].apply(lambda x: isinstance(x, list)).any()
+                or self.df[column].apply(lambda x: isinstance(x, np.ndarray)).any()
+            ):
+                raise ValueError(
+                    f"Label column {column} contains lists or ndarrays. "
+                    "Label rollback is not applicable."
+                )
     def __convertToIndices(self):
         for column in tqdm.tqdm(self.df.columns, desc="Building lookup tables"):
             # Check if the type of the data is a list
@@ -114,6 +131,32 @@ class ChessDataset(Dataset):
                     self.df[column].map(self.lookup_tables[column]).astype("int32")
                 )
 
+    def __rollbackLabel(self, label: List[torch.Tensor], seq_len: int) ->List[torch.Tensor]:
+        """
+        Rollback the label to the size of the input sequence.
+
+        Args:
+            label (List[torch.Tensor]): The label to be rolled back.
+            seq_len (int): The length of the input sequence.
+
+        Returns:
+            List[torch.Tensor]: The rolled back label.
+        """
+        res = []
+        for l in label:
+            if len(l.shape) == 0:
+                l = l.unsqueeze(0).repeat(seq_len)
+            elif l.shape[0] == 1:
+                l = l.repeat(seq_len)
+            else:
+                raise ValueError(
+                    f"Label {l} is not of size 1. "
+                    "Label rollback is not applicable."
+                )
+            res.append(l)
+        return res
+
+
     def __getitem__(self, index):
         """
         Args:
@@ -130,6 +173,9 @@ class ChessDataset(Dataset):
         labels = row[self.labelColumns].values
         labels = [torch.tensor(i) for i in labels]
 
+        if self.label_rollback:
+            labels = self.__rollbackLabel(labels, inputs[0].shape[0])
+        
         return inputs, labels
 
     def __len__(self):
@@ -155,3 +201,13 @@ class ChessDataset(Dataset):
             dict: dictionary of label lookup tables
         """
         return {column: self.lookup_tables[column] for column in self.labelColumns}
+    
+
+
+if __name__ == "__main__":
+    # Example usage
+    parquette_path = "../../data/games_0001/train_100K.parquet"
+    inputColumns = ["Moves"]
+    labelColumns = ["Termination", "Result"]
+    ds = ChessDataset(parquette_path, inputColumns, labelColumns, lookupReference = None, label_rollback = True)
+    ds[0]

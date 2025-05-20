@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 def train(
-    label: str, model_type="rnn", max_epochs=10, lr=1e-3, checkpoint_dir="checkpoints"
+    label: str, model_type: str = "rnn", max_epochs: int = 10, lr: float = 1e-3, checkpoint_dir: str = "checkpoints", eos_prediction: bool = False,
 ):
     torch.set_float32_matmul_precision("medium")
     # Get datamodule
@@ -22,6 +22,7 @@ def train(
         ["Moves"],
         [label],
         8,
+        rollback_label=not eos_prediction,
     )
     dm.setup()
 
@@ -38,7 +39,8 @@ def train(
         ignore_index=0,
         freeze_embeddings=True,
         word2vec="model_weights/word2vec.model",
-        label_counts=dm.fit_set.df[label].explode().value_counts()
+        label_counts=dm.fit_set.df[label].explode().value_counts(),
+        eos_prediction=eos_prediction,
     )
     print(dm.get_vocab_size())
     print(model)

@@ -292,6 +292,7 @@ class SeqAnnotator(pl.LightningModule):
         word2vec: str = None,
         freeze_embeddings: bool = False,
         label_counts: pd.DataFrame = None,
+        eos_prediction: bool = False,
         *args,
         **kwargs,
     ):
@@ -308,6 +309,7 @@ class SeqAnnotator(pl.LightningModule):
         self.ignore_index = ignore_index
         self.word2vec = word2vec
         self.freeze_embeddings = freeze_embeddings
+        self.eos_prediction = eos_prediction
 
         self.embedding: nn.Embedding
         self.rnn: nn.Module
@@ -412,6 +414,9 @@ class SeqAnnotator(pl.LightningModule):
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
+        if self.eos_prediction:
+            logits = logits[:, [-1]]
+            
         logits = logits.contiguous().view(-1, self.n_target_classes)
         # pad the logits to account for the padding token
         logits = torch.cat(
