@@ -4,11 +4,23 @@ import chess
 import chess.svg
 import cairosvg
 import io
+from typing import List
+import random
 
 
 class ChessPlayerApplet:
-    def __init__(self, board_size=800, fen=None):
+    def __init__(self, board_size=800, fen=None, botActionFucntion=None):
+        """ChessPlayerApplet is a class that creates a chess applet using Pygame and the python-chess library.
+        It allows the user to play chess against a bot or another player. The applet displays the chessboard and pieces,
+        handles user input, and updates the board state.
+
+        Args:
+            board_size (int, optional): The pizel size of the board. Defaults to 800.
+            fen (str, optional): The start board configuration, if None the defult is picked. Defaults to None.
+            botActionFucntion (function: (List[str], List[str]) -> str, optional): function that takes a list of the performed actions so far in UCI and a list of available moves to get the available moves. If None the user input are taken as bot actions. Defaults to None.
+        """
         pygame.init()
+        self.UCImoves = []
         self.board_size = board_size
         self.padding_x = 14 / 350 * self.board_size
         self.padding_y = 14 / 350 * self.board_size
@@ -22,6 +34,7 @@ class ChessPlayerApplet:
         else:
             self.board = chess.Board()
         self.current_start = None
+        self.botActionFucntion = botActionFucntion
 
     def pos2uci(self, pos):
         # Convert pixel position to UCI format
@@ -79,7 +92,12 @@ class ChessPlayerApplet:
                         print(
                             f'Trying to move {self.current_start} to {current_pointer}')
                         if move in self.board.legal_moves:
-                            self.board.push(move)
+                            self.performAction(move)
+
+                            if self.botActionFucntion is not None:
+                                self.performAction(self.botActionFucntion(
+                                    self.UCImoves, self.getLegalMoves()))
+
                         self.current_start = None
                         self.render_board(self.current_start)
                     else:
@@ -95,9 +113,49 @@ class ChessPlayerApplet:
                         self.render_board(self.current_start)
             self.clock.tick(60)
 
+    def performAction(self, UCIMove):
+        """Performs a move on the chess board using UCI format.
+        This method is used to perform a move on the chess board.
+
+        Args:
+            UCIMove (str): The move in UCI format (e.g., "e2e4").
+
+        Raises:
+            ValueError: If the move is illegal.
+        """
+        # Perform a move using UCI format
+        move = UCIMove
+        if move in self.getLegalMoves():
+            self.board.push(move)
+            self.render_board()
+            self.UCImoves.append(UCIMove)
+        else:
+            raise ValueError(f"Illegal move: {UCIMove}")
+
+    def getLegalMoves(self) -> List[str]:
+        """Returns a list of all legal moves in UCI format.
+        This method is used to get the legal moves for the current position.
+
+        Returns:
+            List[str]: A list of legal moves in UCI format.
+        """
+        # Get all legal moves in UCI format
+        return [move for move in self.board.legal_moves]
+
 
 if __name__ == "__main__":
+    def randomBot(moves: List[str], legalMoves) -> str:
+        """A simple random bot that selects a random legal move.
+
+        Args:
+            moves (List[str]): A list of the performed actions so far in UCI.
+            getLegalMoves (function): A function to get the available moves.
+
+        Returns:
+            str: A random legal move in UCI format.
+        """
+        return random.choice(legalMoves) if legalMoves else None
     # Example: start from a position after 1.e4 e5 2.Nf3 Nc6 3.Bb5
     test_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
-    applet = ChessPlayerApplet(fen=test_fen)
+    applet = ChessPlayerApplet(fen=test_fen, botActionFucntion=randomBot)
     applet.run()
