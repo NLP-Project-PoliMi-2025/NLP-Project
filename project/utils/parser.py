@@ -33,6 +33,7 @@ def add_train_game_annotation_args(parser: ArgumentParser) -> ArgumentParser:
         "--model-type",
         help="--no-documentation-exists--",
         dest="model_type",
+        type=str,
         default="rnn",
         required=False,
     )
@@ -40,6 +41,7 @@ def add_train_game_annotation_args(parser: ArgumentParser) -> ArgumentParser:
         "--max-epochs",
         help="--no-documentation-exists--",
         dest="max_epochs",
+        type=int,
         default=10,
         required=False,
     )
@@ -47,6 +49,7 @@ def add_train_game_annotation_args(parser: ArgumentParser) -> ArgumentParser:
         "--lr",
         help="--no-documentation-exists--",
         dest="lr",
+        type=float,
         default=0.001,
         required=False,
     )
@@ -54,6 +57,7 @@ def add_train_game_annotation_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint-dir",
         help="--no-documentation-exists--",
         dest="checkpoint_dir",
+        type=str,
         default="checkpoints",
         required=False,
     )
