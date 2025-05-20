@@ -75,11 +75,14 @@ class ChessPlayerApplet:
 
     def run(self):
         self.render_board()
+        game_over = False  # Track if the game is over
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
                     return
+                if game_over:
+                    continue  # Ignore input if game is over
                 elif event.type == MOUSEBUTTONDOWN:
                     current_pointer = self.pos2uci(event.pos)
                     if self.current_start and current_pointer != self.current_start:
@@ -92,6 +95,12 @@ class ChessPlayerApplet:
                         if move in self.board.legal_moves:
                             self.performAction(move)
 
+                            if self.board.is_game_over():
+                                print("Game over:", self.board.result())
+                                game_over = True
+                                self.render_board(self.current_start)
+                                continue
+
                             if self.botActionFunction is not None:
                                 legal_moves = self.getLegalMoves()
                                 legal_moves = [move.uci()
@@ -103,6 +112,12 @@ class ChessPlayerApplet:
                                         )
                                     )
                                 )
+
+                                if self.board.is_game_over():
+                                    print("Game over:", self.board.result())
+                                    game_over = True
+                                    self.render_board()
+                                    continue
 
                         self.current_start = None
                         self.render_board(self.current_start)
