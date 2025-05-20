@@ -25,6 +25,14 @@ def add_start_chess_bot_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         required=False,
     )
+    parser.add_argument(
+        "--epsilone-greedy",
+        help="--no-documentation-exists--",
+        dest="epsilone_greedy",
+        type=float,
+        default=0,
+        required=False,
+    )
     return parser
 
 

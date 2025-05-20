@@ -36,6 +36,7 @@ def execute(args: dict) -> bool:
                 model_weights=args["model_weights"],
                 start_fen=args["start_fen"],
                 bot_starts=args["bot_starts"],
+                epsilone_greedy=args["epsilone_greedy"],
             )
 
         case _:
