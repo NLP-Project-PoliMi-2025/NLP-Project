@@ -18,6 +18,13 @@ def add_start_chess_bot_args(parser: ArgumentParser) -> ArgumentParser:
         default=None,
         required=False,
     )
+    parser.add_argument(
+        "--bot-starts",
+        help="--no-documentation-exists--",
+        dest="bot_starts",
+        action="store_true",
+        required=False,
+    )
     return parser
 
 
@@ -59,6 +66,36 @@ def add_train_game_annotation_args(parser: ArgumentParser) -> ArgumentParser:
         dest="checkpoint_dir",
         type=str,
         default="checkpoints",
+        required=False,
+    )
+    parser.add_argument(
+        "--bidirectional",
+        help="--no-documentation-exists--",
+        dest="bidirectional",
+        action="store_true",
+        required=False,
+    )
+    parser.add_argument(
+        "--n-layers",
+        help="--no-documentation-exists--",
+        dest="n_layers",
+        type=int,
+        default=2,
+        required=False,
+    )
+    parser.add_argument(
+        "--d-model",
+        help="--no-documentation-exists--",
+        dest="d_model",
+        type=int,
+        default=512,
+        required=False,
+    )
+    parser.add_argument(
+        "--extensive-logging",
+        help="--no-documentation-exists--",
+        dest="extensive_logging",
+        action="store_true",
         required=False,
     )
     return parser

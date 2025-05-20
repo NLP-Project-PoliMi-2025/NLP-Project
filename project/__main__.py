@@ -25,11 +25,17 @@ def execute(args: dict) -> bool:
                 max_epochs=args["max_epochs"],
                 lr=args["lr"],
                 checkpoint_dir=args["checkpoint_dir"],
+                bidirectional=args["bidirectional"],
+                n_layers=args["n_layers"],
+                d_model=args["d_model"],
+                extensive_logging=args["extensive_logging"],
             )
 
         case "start-chess-bot":
             module.start_chess_bot(
-                model_weights=args["model_weights"], start_fen=args["start_fen"]
+                model_weights=args["model_weights"],
+                start_fen=args["start_fen"],
+                bot_starts=args["bot_starts"],
             )
 
         case _:

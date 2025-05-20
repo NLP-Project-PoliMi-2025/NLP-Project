@@ -92,9 +92,15 @@ class ChessPlayerApplet:
                         if move in self.board.legal_moves:
                             self.performAction(move)
 
-                            if self.botActionFunction is not None:
-                                self.performAction(self.botActionFunction(
-                                    self.UCImoves, self.getLegalMoves()))
+                            if self.botActionFucntion is not None:
+                                legal_moves = self.getLegalMoves()
+                                legal_moves = [move.uci()
+                                               for move in legal_moves]
+                                self.performAction(
+                                    chess.Move.from_uci(self.botActionFucntion(
+                                        self.UCImoves, legal_moves
+                                    ))
+                                )
 
                         self.current_start = None
                         self.render_board(self.current_start)
@@ -114,7 +120,7 @@ class ChessPlayerApplet:
                         self.render_board(self.current_start)
             self.clock.tick(60)
 
-    def performAction(self, UCIMove):
+    def performAction(self, UCIMove: chess.Move):
         """Performs a move on the chess board using UCI format.
         This method is used to perform a move on the chess board.
 
@@ -129,7 +135,7 @@ class ChessPlayerApplet:
         if move in self.getLegalMoves():
             self.board.push(move)
             self.render_board()
-            self.UCImoves.append(UCIMove)
+            self.UCImoves.append(UCIMove.uci())
         else:
             raise ValueError(f"Illegal move: {UCIMove}")
 
@@ -145,17 +151,19 @@ class ChessPlayerApplet:
 
 
 if __name__ == "__main__":
-    def randomBot(moves: List[str], legalMoves) -> str:
+
+    def randomBot(moves: List[str], legalMoves: List[str]) -> str:
         """A simple random bot that selects a random legal move.
 
         Args:
             moves (List[str]): A list of the performed actions so far in UCI.
-            getLegalMoves (function): A function to get the available moves.
+            getLegalMoves (List[str]): available moves in UCI format.
 
         Returns:
             str: A random legal move in UCI format.
         """
         return random.choice(legalMoves) if legalMoves else None
+
     # Example: start from a position after 1.e4 e5 2.Nf3 Nc6 3.Bb5
     test_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
     applet = ChessPlayerApplet(fen=test_fen, botActionFunction=randomBot)
