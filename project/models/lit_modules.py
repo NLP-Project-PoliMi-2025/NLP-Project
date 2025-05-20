@@ -7,9 +7,12 @@ import pytorch_lightning as pl
 from gensim.models import Word2Vec
 
 from project.models.miniGRU import MinimalGRU
+from project.models.position_encoding import SinusoidalPositionalEmbedding
 
 # metrics from sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pandas as pd
+import numpy as np
 
 
 class BoardFenPredictor(pl.LightningModule):
@@ -57,8 +60,7 @@ class BoardFenPredictor(pl.LightningModule):
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches
@@ -248,8 +250,7 @@ class NextTokenPredictor(pl.LightningModule):
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches
@@ -290,6 +291,7 @@ class SeqAnnotator(pl.LightningModule):
         ignore_index: int = None,
         word2vec: str = None,
         freeze_embeddings: bool = False,
+        label_counts: pd.DataFrame = None,
         *args,
         **kwargs,
     ):
@@ -313,7 +315,16 @@ class SeqAnnotator(pl.LightningModule):
         self.fc_out: nn.Module
         self.build_model()
 
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+        if label_counts is not None:
+            loss_weights = 1 / label_counts
+            loss_weights = loss_weights / loss_weights.sum()
+            loss_weights = loss_weights.sort_index().values
+            loss_weights = np.concatenate([np.zeros(1), loss_weights])
+        else:
+            loss_weights = np.ones(self.n_target_classes + 1)
+        print(f"Loss weights: {loss_weights}")
+        self.loss_fn = nn.CrossEntropyLoss(
+            weight=torch.from_numpy(loss_weights), ignore_index=self.ignore_index)
         self.reg_loss_fn = nn.MSELoss()
 
         self.example_input_array = torch.randint(
@@ -342,6 +353,9 @@ class SeqAnnotator(pl.LightningModule):
                 batch_first=True,
             )
         elif self.model_type == "transformer":
+            self.positional_encoding = SinusoidalPositionalEmbedding(
+                self.embedding.embedding_dim
+            )
             self.dim_map = nn.Linear(
                 self.embedding.embedding_dim, self.d_model)
             encoder_layer = nn.TransformerEncoderLayer(
@@ -380,6 +394,10 @@ class SeqAnnotator(pl.LightningModule):
         if self.model_type in ["rnn", "mini-gru"]:
             output, hidden = self.rnn(embedded)
         else:  # Transformer
+            # add positional encoding
+            seq_len = embedded.size(1)
+            embedded = self.positional_encoding.forward(
+                seq_len).to(embedded.device) + embedded
             # Transformer expects (seq_len, batch, d_model)
             embedded = self.dim_map.forward(embedded)
             embedded = embedded.permute(1, 0, 2)
@@ -391,7 +409,6 @@ class SeqAnnotator(pl.LightningModule):
         return logits, hidden
 
     def training_step(self, batch: Tuple[Tensor, Tensor], batch_idx):
-
         x, y = batch
         # (batch_size, seq_length, n_target_classes)
         logits, _ = self.forward(x)
@@ -477,8 +494,7 @@ class SeqAnnotator(pl.LightningModule):
 
     def configure_optimizers(self):
         # Define the optimizer
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         # Calculate total steps (total_batches = steps per epoch * number of epochs)
         total_steps = self.trainer.estimated_stepping_batches
