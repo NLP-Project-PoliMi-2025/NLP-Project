@@ -177,4 +177,6 @@ data/
 *_logs/
 checkpoints/
 
+.vscode/
+
 *.db
