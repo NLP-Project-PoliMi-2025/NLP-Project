@@ -14,23 +14,27 @@ class ChessBot:
     def __init__(
         self,
         weight_location: str,
-        vocab_table: Dict[str, int],
+        vocab_table: Dict[str, Dict[str, int]],
         bot_starts: bool = False,
         epsilon: float = 0,  # 0 for greedy, 1 for random
     ):
         self.weight_location = weight_location
-        self.moves_vocab_table = vocab_table["Moves"]
-        self.outcome_vocab_table = vocab_table["result_seqs"]
+        self.moves_vocab_table: Dict[str, int] = vocab_table["Moves"]
+        self.outcome_vocab_table: Dict[str, int] = vocab_table["result_seqs"]
         self.bot_starts = bot_starts
         self.epsilon = epsilon  # epsilon greedy action selection
+        # Order the outcome_vocab_table keys by their value
+        ordered_outcome_keys = [k for k, v in sorted(
+            self.outcome_vocab_table.items(), key=lambda item: item[1])]
         self.performanceTracker = ChessBotPerformanceTrackerHandler(
             {
+                "Number of possible Moves": [0],
                 "Certainty": [0],
                 "Entropy": [0],
                 "Outcome Prediction": [[]],
             },
             {
-                "Outcome Prediction": list(self.outcome_vocab_table.keys()),
+                "Outcome Prediction": ordered_outcome_keys,
             }
         )
 
@@ -90,6 +94,7 @@ class ChessBot:
         self.performanceTracker.pushUpdate(
             ChessBotPerformanceTrackerUpdate(
                 {
+                    "Number of possible Moves": len(legal_moves),
                     "Certainty": certainty,
                     "Entropy": entropy,
                     "Outcome Prediction": current_evaluation,
