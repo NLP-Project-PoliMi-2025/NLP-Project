@@ -8,7 +8,7 @@ from gensim.models import Word2Vec
 
 from project.models.miniGRU import MinimalGRU
 from project.models.position_encoding import SinusoidalPositionalEmbedding
-from project.utils.arithmatic import get_last_nonzero_indices, pad_last_dim
+from project.utils.arithmetic import get_last_nonzero_indices, pad_last_dim
 
 # metrics from sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
