@@ -1,7 +1,13 @@
+import matplotlib
 from typing import List, Dict
 from project.models.lit_modules import SeqAnnotator
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import multiprocessing as mp
+sns.set_theme()
+matplotlib.use('TkAgg')  # Add this at the top, after imports
 
 
 class ChessBot:
@@ -14,13 +20,24 @@ class ChessBot:
     ):
         self.weight_location = weight_location
         self.moves_vocab_table = vocab_table["Moves"]
+        self.outcome_vocab_table = vocab_table["result_seqs"]
         self.bot_starts = bot_starts
         self.epsilon = epsilon  # epsilon greedy action selection
+        self.performanceTracker = ChessBotPerformanceTrackerHandler(
+            {
+                "Certainty": [0],
+                "Entropy": [0],
+                "Outcome Prediction": [[]],
+            },
+            {
+                "Outcome Prediction": list(self.outcome_vocab_table.keys()),
+            }
+        )
 
         if self.bot_starts:
-            self.objective = vocab_table["result_seqs"]["1-0"]
+            self.objective = self.outcome_vocab_table["1-0"]
         else:
-            self.objective = vocab_table["result_seqs"]["0-1"]
+            self.objective = self.outcome_vocab_table["0-1"]
 
         self.model = self.load_model(weight_location)
 
@@ -49,6 +66,12 @@ class ChessBot:
             logits, _ = self.model.rnn.forward(legal_embeddings, hidden)
             preds = self.model.fc_out.forward(logits)
 
+            current_evaluation, _ = self.model.forward(
+                past_moves_embeds
+            )
+
+        current_evaluation = current_evaluation.numpy()
+
         preds = preds[:, self.objective - 1]  # account for 0-indexing
         preds = torch.softmax(preds, dim=0)
 
@@ -60,7 +83,149 @@ class ChessBot:
             action_idx = torch.argmax(preds).item()
             rand_action = False
 
+        certainty = preds[action_idx].item()
+        entropy = -torch.sum(preds * torch.log(preds + 1e-10)).item()
         print(
-            f"Predicted action index: {action_idx}, Certainty: {preds[action_idx].item()}, Entropy: {-torch.sum(preds * torch.log(preds + 1e-10)).item()}, Random: {rand_action}")
+            f"Predicted action index: {action_idx}, Certainty: {certainty}, Entropy: {entropy}, Random: {rand_action}")
+        self.performanceTracker.pushUpdate(
+            ChessBotPerformanceTrackerUpdate(
+                {
+                    "Certainty": certainty,
+                    "Entropy": entropy,
+                    "Outcome Prediction": current_evaluation,
+                }
+            )
+        )
         action = legal_moves[action_idx]
         return action
+
+
+class ChessBotPerformanceTrackerUpdate:
+    def __init__(self, metrics: Dict[str, float]):
+        self.metrics = metrics
+
+
+class ChessBotPerformanceTrackerHandler:
+    def __init__(self, metrics: Dict, labels: Dict, updatePeriod: float = 0.1):
+        self.queue = mp.Queue()
+        self.plotterProcess = mp.Process(
+            target=ChessBotPerformanceTrackerHandler.plotterProcess_function,
+            args=(self.queue, metrics, labels, updatePeriod))
+        self.plotterProcess.start()
+
+    def plotterProcess_function(queue: mp.Queue, metrics: Dict, labels: Dict, updatePeriod: float):
+        print("[Plotter process started]")
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        sns.set_theme()
+        import time
+
+        plotter = ChessBotPerformanceTracker(
+            metrics=metrics,
+            labels=labels
+        )
+
+        while True:
+            while not queue.empty():
+                update: ChessBotPerformanceTrackerUpdate = queue.get()
+                plotter.processUpdate(update)
+
+            # plt.pause(updatePeriod)
+            plotter.fig.canvas.draw_idle()
+            plotter.fig.canvas.flush_events()
+            time.sleep(updatePeriod)
+
+    def pushUpdate(self, update: ChessBotPerformanceTrackerUpdate):
+        self.queue.put(update)
+
+
+class ChessBotPerformanceTracker:
+    """This class can store and dynamically plot the performance of the chess bot.
+    It can be used to track the performance of the bot over time and visualize the results.
+    Now, each metric is plotted in its own subplot.
+    """
+
+    def __init__(self, metrics: Dict, labels: Dict):
+        self.metrics = metrics
+        self.metricsNames = list(metrics.keys())
+        self.num_metrics = len(metrics)
+        self.labels = labels
+        plt.ion()
+        self.fig, self.axes = plt.subplots(
+            self.num_metrics, 1, figsize=(5, 2.5 * self.num_metrics), squeeze=False)
+        self.fig.canvas.manager.set_window_title(
+            "Chess Bot Performance Tracker")
+        self.fig.suptitle("Chess Bot Performance")
+        plt.show()
+        self.update_plot()
+
+    def add_metrics(self, metrics: Dict[str, float]):
+        """Add metrics to the tracker and update the plot.
+        Args:
+            metrics (Dict[str, float]): A dictionary of metrics to add.
+        """
+        for metric in metrics:
+            if metric in self.metricsNames:
+                self.metrics[metric].append(metrics[metric])
+            else:
+                raise ValueError(
+                    f"Metric {metric} not in metricsNames: {self.metricsNames}"
+                )
+
+        self.update_plot()
+
+    def override_metrics(self, metrics: Dict[str, List]):
+        """Override the metrics with new values.
+        Args:
+            metrics (Dict[str, List[float]]): A dictionary of metrics to override.
+        """
+        for metric in metrics:
+            if metric in self.metricsNames:
+                self.metrics[metric] = metrics[metric]
+            else:
+                self.metrics[metric] = []
+
+        self.update_plot()
+
+    def getLabel(self, metric: str):
+        """Get the label for a given metric.
+        Args:
+            metric (str): The metric to get the label for.
+        Returns:
+            str: The label for the metric.
+        """
+        if metric in self.labels:
+            return self.labels[metric] if self.labels[metric] or len(self.labels[metric]) > 0 else None
+        else:
+            return None
+
+    def update_plot(self):
+        for idx, metric in enumerate(self.metricsNames):
+            ax = self.axes[idx, 0]
+            ax.clear()
+            ax.set_title(metric)
+            ax.set_xlabel("Games Played")
+            ax.set_ylabel(metric)
+            if isinstance(self.metrics[metric], list) and self.metrics[metric] and isinstance(self.metrics[metric][0], list):
+                for i, vals in enumerate(self.metrics[metric]):
+                    ax.plot(
+                        vals, marker="o", label=self.labels[metric][i]
+                    )
+            else:
+                ax.plot(range(0, len(self.metrics[metric])*2, 2), self.metrics[metric],
+                        label=self.getLabel(metric), marker="o")
+            ax.legend()
+        plt.tight_layout()
+
+    def processUpdate(self, update: ChessBotPerformanceTrackerUpdate):
+        newMetrics = update.metrics.copy()
+        for metric in newMetrics:
+            if metric in self.metrics:
+                import collections.abc
+                if isinstance(newMetrics[metric], collections.abc.Iterable) and not isinstance(newMetrics[metric], (str, bytes)):
+                    self.metrics[metric] = newMetrics[metric]
+                else:
+                    self.metrics[metric].append(newMetrics[metric])
+            else:
+                self.metrics[metric] = [newMetrics[metric]]
+        self.update_plot()
