@@ -37,6 +37,7 @@ def execute(args: dict) -> bool:
                 start_fen=args["start_fen"],
                 bot_starts=args["bot_starts"],
                 epsilone_greedy=args["epsilone_greedy"],
+                input_type=args["input_type"],
             )
 
         case _:

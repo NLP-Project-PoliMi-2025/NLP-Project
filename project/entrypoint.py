@@ -42,8 +42,9 @@ class EntryPoint:
         start_fen: str = None,
         bot_starts: bool = False,
         epsilone_greedy: float = 0,
+        input_type: str = "mouse",
     ):
-        from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
+        from project.ChessPlayerApplet.ChessPlayerAppletMouse import ChessPlayerAppletMouse
         from project.ChessPlayerApplet.chess_bot import ChessBot
         import yaml
 
@@ -58,5 +59,18 @@ class EntryPoint:
             bot_starts=bot_starts,
             epsilon=epsilone_greedy,
         )
-        applet = ChessPlayerApplet(fen=start_fen, botActionFunction=chess_bot)
+        if input_type == "mouse":
+            from project.ChessPlayerApplet.ChessPlayerAppletMouse import ChessPlayerAppletMouse
+
+            applet = ChessPlayerAppletMouse(
+                fen=start_fen, botActionFunction=chess_bot
+            )
+        elif input_type == "vocal":
+            from project.ChessPlayerApplet.ChessPlayerAppletVocal import ChessPlayerAppletVocal
+
+            applet = ChessPlayerAppletVocal(
+                fen=start_fen, botActionFunction=chess_bot
+            )
+        else:
+            raise ValueError("Invalid input type. Choose 'mouse' or 'vocal'.")
         applet.run()

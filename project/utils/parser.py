@@ -33,6 +33,14 @@ def add_start_chess_bot_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         required=False,
     )
+    parser.add_argument(
+        "--input-type",
+        help="--mouse or vocal--",
+        dest="input_type",
+        type=str,
+        default="mouse",
+        required=False,
+    )
     return parser
 
 
