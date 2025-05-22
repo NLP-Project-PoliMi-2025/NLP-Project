@@ -87,49 +87,49 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
                                 print(error_text)
                                 self.toAudioPlayer.send(error_text)
 
-                            if self.botActionFunction is not None:
-                                legal_moves = self.getLegalMoves()
-                                legal_moves = [move.uci()
-                                               for move in legal_moves]
-                                self.performAction(
-                                    chess.Move.from_uci(
-                                        self.botActionFunction(
-                                            self.UCImoves, legal_moves
-                                        )
+                        if self.botActionFunction is not None:
+                            legal_moves = self.getLegalMoves()
+                            legal_moves = [move.uci()
+                                           for move in legal_moves]
+                            self.performAction(
+                                chess.Move.from_uci(
+                                    self.botActionFunction(
+                                        self.UCImoves, legal_moves
                                     )
                                 )
-                                text = f"Bot played {self.UCImoves[-1]}, "
+                            )
+                            text = f"Bot played {self.UCImoves[-1]}, "
 
-                                if self.board.is_game_over():
-                                    text += f"Game over: {self.board.result()}"
-                                    print(text)
-                                    self.toAudioPlayer.send(text)
-                                    game_over = True
-                                    self.render_board()
-                                    continue
-                                else:
-                                    text += "your turn."
-
+                            if self.board.is_game_over():
+                                text += f"Game over: {self.board.result()}"
                                 print(text)
                                 self.toAudioPlayer.send(text)
-
-                                self.current_start = None
-                                self.render_board(self.current_start)
+                                game_over = True
+                                self.render_board()
+                                continue
                             else:
-                                self.current_start = move.from_square
-                                # Check if there are possible moves from the current square
-                                possible_moves = [
-                                    move.to_square
-                                    for move in self.board.legal_moves
-                                    if move.from_square
-                                    == chess.parse_square(self.current_start)
-                                ]
-                                if len(possible_moves) == 0:
-                                    text = f"No possible moves from {self.current_start}"
-                                    print(text)
-                                    self.toAudioPlayer.send(text)
-                                    self.current_start = None
-                                self.render_board(self.current_start)
+                                text += "your turn."
+
+                            print(text)
+                            self.toAudioPlayer.send(text)
+
+                            self.current_start = None
+                            self.render_board(self.current_start)
+                        else:
+                            self.current_start = move.from_square
+                            # Check if there are possible moves from the current square
+                            possible_moves = [
+                                move.to_square
+                                for move in self.board.legal_moves
+                                if move.from_square
+                                == chess.parse_square(self.current_start)
+                            ]
+                            if len(possible_moves) == 0:
+                                text = f"No possible moves from {self.current_start}"
+                                print(text)
+                                self.toAudioPlayer.send(text)
+                                self.current_start = None
+                            self.render_board(self.current_start)
             self.clock.tick(60)
 
     # def handle_player_move(self):
