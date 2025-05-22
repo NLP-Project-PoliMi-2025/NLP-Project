@@ -18,7 +18,6 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
             botActionFucntion (function: (List[str], List[str]) -> str, optional): function that takes a list of the performed actions so far in UCI and a list of available moves to get the available moves. If None the user input are taken as bot actions. Defaults to None.
         """
         super().__init__(board_size, fen, botActionFunction)
-        self.audio_player = AudioPlayer()
         self.toAudioPlayer, toApplet = mp.Pipe()
 
         print("Starting audio player process")
@@ -26,6 +25,7 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
             target=ChessPlayerAppletVocal.audioPlayerProcess,
             args=(toApplet,),
         )
+        self.audio_player_process.start()
 
     def audioPlayerProcess(toApplet: mp.Pipe):
         """Process that handles the audio player.
@@ -33,6 +33,9 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
         """
         print("[Audio player process started]")
         audioPlayer = AudioPlayer()
+
+        audioPlayer.read_text(
+            "Welcome to the chess game. Press a key and say the move you want to make.")
 
         while True:
             moveToPerform = audioPlayer.get_move()
@@ -50,8 +53,6 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
     def run(self):
         """Main loop of the applet. Handles user input and updates the board state.
         """
-        self.audio_player.read_text(
-            "Welcome to the chess game. Press a key and say the move you want to make.")
         self.render_board()
         game_over = False  # Track if the game is over
         while True:
@@ -126,7 +127,7 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
                                 if len(possible_moves) == 0:
                                     text = f"No possible moves from {self.current_start}"
                                     print(text)
-                                    self.audio_player.read_text(text)
+                                    self.toAudioPlayer.send(text)
                                     self.current_start = None
                                 self.render_board(self.current_start)
             self.clock.tick(60)
