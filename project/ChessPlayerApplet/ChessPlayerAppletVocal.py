@@ -3,6 +3,7 @@ import chess
 from pygame.locals import *
 from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
 from project.utils.audioPlayer import AudioPlayer
+import multiprocess as mp
 
 
 class ChessPlayerAppletVocal(ChessPlayerApplet):
@@ -18,12 +19,39 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
         """
         super().__init__(board_size, fen, botActionFunction)
         self.audio_player = AudioPlayer()
+        self.toAudioPlayer, toApplet = mp.Pipe()
 
+        print("Starting audio player process")
+        self.audio_player_process = mp.Process(
+            target=ChessPlayerAppletVocal.audioPlayerProcess,
+            args=(toApplet,),
+        )
+
+    def audioPlayerProcess(toApplet: mp.Pipe):
+        """Process that handles the audio player.
+        This process is used to handle the audio player in a separate process.
+        """
+        print("[Audio player process started]")
+        audioPlayer = AudioPlayer()
+
+        while True:
+            moveToPerform = audioPlayer.get_move()
+            toApplet.send(moveToPerform)
+
+            performedMove = toApplet.recv()
+            if "Game over" in performedMove:
+                audioPlayer.read_text(performedMove)
+                break
+            else:
+                audioPlayer.read_text(
+                    f"Move performed: {chess.square_name(performedMove.from_square)} to {chess.square_name(performedMove.to_square)}"
+                )
 
     def run(self):
         """Main loop of the applet. Handles user input and updates the board state.
         """
-        self.audio_player.read_text("Welcome to the chess game. Press a key and say the move you want to make.")
+        self.audio_player.read_text(
+            "Welcome to the chess game. Press a key and say the move you want to make.")
         self.render_board()
         game_over = False  # Track if the game is over
         while True:
@@ -38,65 +66,69 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
                         pygame.quit()
                         return
                     while True:
-                        move = self.audio_player.get_move()
-                        text = f"Trying to move {chess.square_name(move.from_square)} to {chess.square_name(move.to_square)}"
-                        print(text)
-                        self.audio_player.read_text(text)
-                        if move in self.board.legal_moves:
-                            self.performAction(move)
-                            self.current_start = move.from_square
-                            if self.board.is_game_over():
-                                end_text = f"Game over: {self.board.result()}"
-                                print(end_text)
-                                self.audio_player.read_text(end_text)
-                                self.render_board(self.current_start)
+                        if self.toAudioPlayer.poll():
+                            move = self.toAudioPlayer.recv()
+                            text = f"Trying to move {chess.square_name(move.from_square)} to {chess.square_name(move.to_square)}"
+                            print(text)
+
+                            if move in self.board.legal_moves:
+                                self.performAction(move)
+                                self.current_start = move.from_square
+                                if self.board.is_game_over():
+                                    end_text = f"Game over: {self.board.result()}"
+                                    print(end_text)
+                                    self.toAudioPlayer.send(end_text)
+                                    self.render_board(self.current_start)
+                                    break
                                 break
-                            break
-                        else:
-                            error_text = "Illegal move. Please try again."
-                            print(error_text)
-                            self.audio_player.read_text(error_text)
+                            else:
+                                error_text = "Illegal move. Please try again."
+                                print(error_text)
+                                self.toAudioPlayer.send(error_text)
 
-                    if self.botActionFunction is not None:
-                        legal_moves = self.getLegalMoves()
-                        legal_moves = [move.uci()
-                                        for move in legal_moves]
-                        self.performAction(
-                            chess.Move.from_uci(
-                                self.botActionFunction(
-                                    self.UCImoves, legal_moves
+                            if self.botActionFunction is not None:
+                                legal_moves = self.getLegalMoves()
+                                legal_moves = [move.uci()
+                                               for move in legal_moves]
+                                self.performAction(
+                                    chess.Move.from_uci(
+                                        self.botActionFunction(
+                                            self.UCImoves, legal_moves
+                                        )
+                                    )
                                 )
-                            )
-                        )
-                        text = f"Bot played {self.UCImoves[-1]}, your turn."
-                        print(text)
-                        self.audio_player.read_text(text)
+                                text = f"Bot played {self.UCImoves[-1]}, "
 
-                        if self.board.is_game_over():
-                            text = f"Game over: {self.board.result()}"
-                            print(text)
-                            self.audio_player.read_text(text)
-                            game_over = True
-                            self.render_board()
-                            continue
+                                if self.board.is_game_over():
+                                    text += f"Game over: {self.board.result()}"
+                                    print(text)
+                                    self.toAudioPlayer.send(text)
+                                    game_over = True
+                                    self.render_board()
+                                    continue
+                                else:
+                                    text += "your turn."
 
-                        self.current_start = None
-                        self.render_board(self.current_start)
-                    else:
-                        self.current_start = move.from_square
-                        # Check if there are possible moves from the current square
-                        possible_moves = [
-                            move.to_square
-                            for move in self.board.legal_moves
-                            if move.from_square
-                            == chess.parse_square(self.current_start)
-                        ]
-                        if len(possible_moves) == 0:
-                            text = f"No possible moves from {self.current_start}"
-                            print(text)
-                            self.audio_player.read_text(text)
-                            self.current_start = None
-                        self.render_board(self.current_start)
+                                print(text)
+                                self.toAudioPlayer.send(text)
+
+                                self.current_start = None
+                                self.render_board(self.current_start)
+                            else:
+                                self.current_start = move.from_square
+                                # Check if there are possible moves from the current square
+                                possible_moves = [
+                                    move.to_square
+                                    for move in self.board.legal_moves
+                                    if move.from_square
+                                    == chess.parse_square(self.current_start)
+                                ]
+                                if len(possible_moves) == 0:
+                                    text = f"No possible moves from {self.current_start}"
+                                    print(text)
+                                    self.audio_player.read_text(text)
+                                    self.current_start = None
+                                self.render_board(self.current_start)
             self.clock.tick(60)
 
     # def handle_player_move(self):
