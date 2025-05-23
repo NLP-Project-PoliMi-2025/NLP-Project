@@ -1,0 +1,29 @@
+=== PREDICTION STATISTICS ===
+Total predictions: 10000
+Legal moves: 3274 (32.74%)
+Illegal moves: 6726 (67.26%)
+Invalid format: 0 (0.00%)
+
+=== DETAIL BY SEQUENCE LENGTH ===
+Length 1: 261/462 legal moves (56.49%)
+Length 2: 143/504 legal moves (28.37%)
+Length 3: 180/506 legal moves (35.57%)
+Length 4: 182/507 legal moves (35.90%)
+Length 5: 160/557 legal moves (28.73%)
+Length 6: 123/491 legal moves (25.05%)
+Length 7: 137/503 legal moves (27.24%)
+Length 8: 113/469 legal moves (24.09%)
+Length 9: 199/498 legal moves (39.96%)
+Length 10: 105/472 legal moves (22.25%)
+Length 11: 190/493 legal moves (38.54%)
+Length 12: 101/484 legal moves (20.87%)
+Length 13: 237/463 legal moves (51.19%)
+Length 14: 114/498 legal moves (22.89%)
+Length 15: 223/494 legal moves (45.14%)
+Length 16: 132/520 legal moves (25.38%)
+Length 17: 199/532 legal moves (37.41%)
+Length 18: 137/505 legal moves (27.13%)
+Length 19: 214/513 legal moves (41.72%)
+Length 20: 124/529 legal moves (23.44%)
+
+Results generated on: 2025-05-23 19:01:19.880611
