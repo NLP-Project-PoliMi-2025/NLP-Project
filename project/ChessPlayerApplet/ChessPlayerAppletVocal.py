@@ -36,7 +36,8 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
         audioPlayer = AudioPlayer()
 
         audioPlayer.read_text(
-            "Welcome to the chess game. Press a key and say the move you want to make.")
+            "Welcome to the chess game. Press a key and say the move you want to make."
+        )
 
         while True:
             if toApplet.poll():
@@ -65,8 +66,7 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
         return move
 
     def run(self):
-        """Main loop of the applet. Handles user input and updates the board state.
-        """
+        """Main loop of the applet. Handles user input and updates the board state."""
         self.render_board()
         game_over = False  # Track if the game is over
         PlayerPlayed = False
@@ -100,13 +100,10 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
                         game_over = True
                     elif self.botActionFunction is not None:
                         legal_moves = self.getLegalMoves()
-                        legal_moves = [move.uci()
-                                       for move in legal_moves]
+                        legal_moves = [move.uci() for move in legal_moves]
                         self.performAction(
                             chess.Move.from_uci(
-                                self.botActionFunction(
-                                    self.UCImoves, legal_moves
-                                )
+                                self.botActionFunction(self.UCImoves, legal_moves)
                             )
                         )
                         text = f"Bot played {self.UCImoves[-1]}, "
