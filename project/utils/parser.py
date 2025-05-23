@@ -26,19 +26,18 @@ def add_start_chess_bot_args(parser: ArgumentParser) -> ArgumentParser:
         required=False,
     )
     parser.add_argument(
-        "--epsilone-greedy",
+        "--epsilon-greedy",
         help="--no-documentation-exists--",
-        dest="epsilone_greedy",
+        dest="epsilon_greedy",
         type=float,
         default=0,
         required=False,
     )
     parser.add_argument(
-        "--input-type",
-        help="--mouse or vocal--",
-        dest="input_type",
-        type=str,
-        default="mouse",
+        "--use-vocal",
+        help="--no-documentation-exists--",
+        dest="use_vocal",
+        action="store_true",
         required=False,
     )
     return parser
