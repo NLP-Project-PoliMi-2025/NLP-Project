@@ -5,14 +5,16 @@ import pandas as pd
 import tqdm
 import numpy as np
 from pyarrow.lib import ArrowInvalid
+from datasets import Dataset as huggingfaceDataset
 
 
 class ChessDataset(Dataset):
     def __init__(
         self,
-        parquette_path: str,
         inputColumns: List[str],
         labelColumns: List[str],
+        dataset: huggingfaceDataset = None,
+        parquette_path: str = "",
         lookupReference: "ChessDataset" = None,
     ):
         self.parquette_path = parquette_path
@@ -22,10 +24,27 @@ class ChessDataset(Dataset):
         self.lookupReference = lookupReference
         self.inputColumns = inputColumns
         self.labelColumns = labelColumns
+        self.dataset: huggingfaceDataset = dataset
 
         self.__instantiateLookup()
-        self.__load_parquet()
+        self.__load_parquet() if self.dataset is None else self.__load_from_dataset()
+        if self.df is None:
+            raise ValueError("DataFrame is None, cannot load data")
         self.__convertToIndices()
+
+    def __load_from_dataset(self):
+        print(
+            f"Loading dataset with columns ",
+            self.inputColumns + self.labelColumns,
+        )
+        if self.dataset is None:
+            raise ValueError("Dataset is None, cannot load data")
+
+        # Convert the dataset to a pandas DataFrame
+        self.df = self.dataset.to_pandas(
+        )[self.inputColumns + self.labelColumns]
+
+        print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
     def __load_parquet(self):
         print(
@@ -46,7 +65,8 @@ class ChessDataset(Dataset):
         except FileNotFoundError as e:
             raise ValueError("File not found: ", self.parquette_path) from e
         except Exception as e:
-            raise ValueError("Error loading parquet file: ", self.parquette_path) from e
+            raise ValueError("Error loading parquet file: ",
+                             self.parquette_path) from e
 
         print(f"Loaded {len(self.df)} rows and {len(self.df.columns)} columns")
 
@@ -117,7 +137,8 @@ class ChessDataset(Dataset):
                 )
             else:
                 self.df[column] = (
-                    self.df[column].map(self.lookup_tables[column]).astype("int32")
+                    self.df[column].map(
+                        self.lookup_tables[column]).astype("int32")
                 )
 
     def __getitem__(self, index):
@@ -129,7 +150,7 @@ class ChessDataset(Dataset):
         row = self.df.iloc[index]
 
         # Get the input and label columns
-        inputs = row[self.inputColumns].values
+        inputs = row[self.inputColumns]
         # Convert to tensors
         inputs = [torch.tensor(i) for i in inputs]
 
