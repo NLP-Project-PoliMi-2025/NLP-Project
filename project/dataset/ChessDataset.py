@@ -146,7 +146,6 @@ class ChessDataset(Dataset):
         Args:
             index (int): game index
         """
-        print(index)
         # Get the row at the given index
         row = self.df.iloc[index]
 
