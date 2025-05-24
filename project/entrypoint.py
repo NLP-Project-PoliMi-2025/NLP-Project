@@ -41,10 +41,13 @@ class EntryPoint:
         model_weights: str,
         start_fen: str = None,
         bot_starts: bool = False,
-        epsilone_greedy: float = 0,
+        epsilon_greedy: float = 0,
+        use_vocal: bool = False,
     ):
-        from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
-        from project.ChessPlayerApplet.chess_bot import ChessBot
+        from project.ChessPlayerApplet.ChessPlayerAppletMouse import (
+            ChessPlayerAppletMouse,
+        )
+        from project.ChessPlayerApplet.chess_bot import LSTMChessBot
         import yaml
 
         with open("data/games_0001/moves_lookup_table.yaml", "r") as f:
@@ -52,11 +55,24 @@ class EntryPoint:
         with open("data/games_0001/result_seqs_lookup_table.yaml", "r") as f:
             look_up_table.update(yaml.safe_load(f))
 
-        chess_bot = ChessBot(
+        chess_bot = LSTMChessBot(
             weight_location=model_weights,
             vocab_table=look_up_table,
             bot_starts=bot_starts,
-            epsilon=epsilone_greedy,
+            epsilon=epsilon_greedy,
         )
-        applet = ChessPlayerApplet(fen=start_fen, botActionFunction=chess_bot)
+        if use_vocal:
+            from project.ChessPlayerApplet.ChessPlayerAppletVocal import (
+                ChessPlayerAppletVocal,
+            )
+
+            applet = ChessPlayerAppletVocal(fen=start_fen, botActionFunction=chess_bot)
+
+        else:
+            from project.ChessPlayerApplet.ChessPlayerAppletMouse import (
+                ChessPlayerAppletMouse,
+            )
+
+            applet = ChessPlayerAppletMouse(fen=start_fen, botActionFunction=chess_bot)
+
         applet.run()
