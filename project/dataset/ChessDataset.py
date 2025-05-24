@@ -151,11 +151,11 @@ class ChessDataset(Dataset):
         row = self.df.iloc[index]
 
         # Get the input and label columns
-        inputs = row[self.inputColumns[0]].values
+        inputs = row[self.inputColumns]
         # Convert to tensors
         inputs = [torch.tensor(i) for i in inputs]
 
-        labels = row[self.labelColumns[0]].values
+        labels = row[self.labelColumns].values
         labels = [torch.tensor(i) for i in labels]
 
         return inputs, labels
