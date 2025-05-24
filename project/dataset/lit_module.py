@@ -158,7 +158,7 @@ class SeqAnnotationDM(LightningDataModule):
             lookupReference=None,
         )
         self.validate_set = ChessDataset(
-            dataset=self.datasets['val'] if self.datasets else None,
+            dataset=self.datasets['validation'] if self.datasets else None,
             parquette_path=self.validate_file,
             inputColumns=self.input_column,
             labelColumns=self.label_column,
