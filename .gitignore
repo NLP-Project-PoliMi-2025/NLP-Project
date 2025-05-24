@@ -180,3 +180,5 @@ checkpoints/
 .vscode/
 
 *.db
+
+*.pkl
