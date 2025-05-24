@@ -5,8 +5,8 @@ import pandas as pd
 import torch
 from gensim.models import Word2Vec
 
-from project.dataset import _ChessDataset
-from project.db_utils import fetch_games
+from nlpChess.dataset import _ChessDataset
+from nlpChess.db_utils import fetch_games
 
 ChessResultLabel = {"1-0": 0, "0-1": 1, "1/2-1/2": 2}
 ChessTerminationLabel = {
@@ -16,7 +16,8 @@ ChessTerminationLabel = {
     "FIVEFOLD_REPETITION": 3,
     "SEVENTYFIVE_MOVES": 4,
 }
-game_label_map = {"result": ChessResultLabel, "termination": ChessTerminationLabel}
+game_label_map = {"result": ChessResultLabel,
+                  "termination": ChessTerminationLabel}
 
 
 class ChessClassificationDataset(_ChessDataset):
@@ -34,13 +35,15 @@ class ChessClassificationDataset(_ChessDataset):
         """
         index = index + 1  # game id starts with 1
         game_df = fetch_games(
-            connection=self.conn, columns=[self.label], filters=[("id", "=", index)]
+            connection=self.conn, columns=[
+                self.label], filters=[("id", "=", index)]
         )
         label = game_df[self.label].values[0]
         label = torch.tensor([self.label_map[label]], dtype=torch.long)
 
         if game_df.empty:
-            raise IndexError(f"Game with index {index} not found in the database.")
+            raise IndexError(
+                f"Game with index {index} not found in the database.")
 
         query = f"""
             SELECT mc.move 

@@ -3,7 +3,7 @@ from pygame.locals import *
 import chess
 from typing import List
 import random
-from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
+from nlpChess.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
 
 
 class ChessPlayerAppletMouse(ChessPlayerApplet):
@@ -77,7 +77,8 @@ class ChessPlayerAppletMouse(ChessPlayerApplet):
 
                             if self.botActionFunction is not None:
                                 legal_moves = self.getLegalMoves()
-                                legal_moves = [move.uci() for move in legal_moves]
+                                legal_moves = [move.uci()
+                                               for move in legal_moves]
                                 self.performAction(
                                     chess.Move.from_uci(
                                         self.botActionFunction(
@@ -104,7 +105,8 @@ class ChessPlayerAppletMouse(ChessPlayerApplet):
                             == chess.parse_square(self.current_start)
                         ]
                         if len(possible_moves) == 0:
-                            print(f"No possible moves from {self.current_start}")
+                            print(
+                                f"No possible moves from {self.current_start}")
                             self.current_start = None
                         self.render_board(self.current_start)
             self.clock.tick(60)

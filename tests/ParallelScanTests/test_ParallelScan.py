@@ -1,6 +1,6 @@
 import torch
 import os
-from project.models.miniGRU import MinimalRNN
+from nlpChess.models.miniGRU import MinimalRNN
 
 
 def test_parallelScan_randomFloats():

@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningDataModule
 
-from project.utils.collate import collate_fn_next_token
-from project.dataset.seq2seq import NextTokenDataset
-from project.db_utils import fetch_games
+from nlpChess.utils.collate import collate_fn_next_token
+from nlpChess.dataset.seq2seq import NextTokenDataset
+from nlpChess.db_utils import fetch_games
 from gensim.models import Word2Vec
 from torch.utils.data import DataLoader
 import sqlite3
-from project.dataset.ChessDataset import ChessDataset
+from nlpChess.dataset.ChessDataset import ChessDataset
 
 from datasets import Dataset as HuggingfaceDataset
 

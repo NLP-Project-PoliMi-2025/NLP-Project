@@ -2,11 +2,11 @@ from typing import List
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from project.dataset.base import _ChessDataset
+from nlpChess.dataset.base import _ChessDataset
 import torch
 import sqlite3
-from project.db_utils import fetch_games, fetch_games_with_moves, fetch_moves
-from project.utils.info import process_runindicator
+from nlpChess.db_utils import fetch_games, fetch_games_with_moves, fetch_moves
+from nlpChess.utils.info import process_runindicator
 
 
 class BoardStatePredictionDataset(_ChessDataset):
@@ -21,7 +21,8 @@ class BoardStatePredictionDataset(_ChessDataset):
         FROM moves
         """
         df = pd.read_sql_query(query, con=self.conn)
-        self.game_lengths = df.groupby("game_id").aggregate("max")["move_number"].values
+        self.game_lengths = df.groupby("game_id").aggregate("max")[
+            "move_number"].values
         self.game_bins = self.game_lengths.cumsum()
 
     def get_fen_map(self):
@@ -89,7 +90,8 @@ class NextTokenDataset(_ChessDataset):
                 ORDER BY m.game_id, m.move_number
             """
             with process_runindicator(f"{self.__repr__()}: Loading moves into RAM"):
-                self.df = pd.read_sql_query(query, con=sqlite3.connect(self.database))
+                self.df = pd.read_sql_query(
+                    query, con=sqlite3.connect(self.database))
             self.max_move_number = self.df["move_number"].max()
 
     def _load_from_db(self, index: int) -> np.ndarray:

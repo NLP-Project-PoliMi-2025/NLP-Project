@@ -1,17 +1,17 @@
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger, WandbLogger
-from project.models.lit_modules import (
+from nlpChess.models.lit_modules import (
     SeqAnnotator,
 )  # or wherever the model is defined
-from project.dataset.lit_module import SeqAnnotationDM
+from nlpChess.dataset.lit_module import SeqAnnotationDM
 import torch
 from datetime import datetime
 
 
 def train(
-    label: str, 
-    model_type: str = "rnn", 
+    label: str,
+    model_type: str = "rnn",
     max_epochs: int = 10,
     lr: float = 1e-3,
     checkpoint_dir: str = "checkpoints",
@@ -67,7 +67,7 @@ def train(
     tb_logger = TensorBoardLogger(f"tb_logs/{label}", name=model_type)
     wb_logger = WandbLogger(
         project="NLP-chess",
-        name=f"{model_type}-{label}-{datetime.now().strftime("%Y%m%d%H%M%S")}",
+        name=f"{model_type}-{label}-{datetime.now().strftime(" % Y % m % d % H % M % S")}",
         save_dir=f"wandb_logs/{label}/{model_type}",
         log_model=False,
     )

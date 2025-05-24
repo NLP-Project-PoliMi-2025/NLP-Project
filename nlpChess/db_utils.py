@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from project.chess_utils import get_board_states
+from nlpChess.chess_utils import get_board_states
 
 
 def connect_chess_db(db_name: str) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
@@ -62,7 +62,8 @@ def create_tables(cursor: sqlite3.Cursor):
 
 
 def insert_if_not_exists(cursor, table, column, value):
-    cursor.execute(f"INSERT OR IGNORE INTO {table} ({column}) VALUES (?)", (value,))
+    cursor.execute(
+        f"INSERT OR IGNORE INTO {table} ({column}) VALUES (?)", (value,))
     cursor.execute(f"SELECT id FROM {table} WHERE {column} = ?", (value,))
     return cursor.fetchone()[0]
 
@@ -97,7 +98,8 @@ def insert_game(
         zip(move_sequence, board_fens), start=1
     ):
         # Insert (or get) move id
-        move_id = insert_if_not_exists(cursor, "move_collection", "move", move_str)
+        move_id = insert_if_not_exists(
+            cursor, "move_collection", "move", move_str)
 
         # Insert (or get) board_fen_id
         board_fen_id = insert_if_not_exists(

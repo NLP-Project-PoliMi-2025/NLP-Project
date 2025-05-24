@@ -4,7 +4,7 @@ import torch
 from gensim.models import Word2Vec
 from torch.utils.data import Dataset
 
-from project.db_utils import connect_chess_db, fetch_games
+from nlpChess.db_utils import connect_chess_db, fetch_games
 
 
 class _ChessDataset(Dataset):

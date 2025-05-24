@@ -1,15 +1,16 @@
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import CSVLogger
-from project.models.lit_modules import (
+from nlpChess.models.lit_modules import (
     NextTokenPredictor,
 )  # or wherever the model is defined
-from project.dataset.lit_module import NextTokenDM
+from nlpChess.dataset.lit_module import NextTokenDM
 
 
 def train(model_type="rnn", max_epochs=10, lr=1e-3, checkpoint_dir="checkpoints"):
     # Get datamodule
-    dm = NextTokenDM("data/chess_games_1.db", num_worker=8, batch_size=32, use_ram=True)
+    dm = NextTokenDM("data/chess_games_1.db", num_worker=8,
+                     batch_size=32, use_ram=True)
 
     # Instantiate model
     encoder_weight_location = "project/models/word2vec100.model"

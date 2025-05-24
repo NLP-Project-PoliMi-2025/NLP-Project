@@ -6,7 +6,7 @@ class EntryPoint:
         lr: float = 1e-3,
         checkpoint_dir="checkpoints",
     ):
-        from project.scripts.train_next_token import train
+        from nlpChess.scripts.train_next_token import train
 
         train(model_type, max_epochs, lr, checkpoint_dir)
 
@@ -22,7 +22,7 @@ class EntryPoint:
         d_model: int = 512,
         extensive_logging: bool = False,
     ):
-        from project.scripts.train_game_annotation import train
+        from nlpChess.scripts.train_game_annotation import train
 
         train(
             label,
@@ -44,10 +44,10 @@ class EntryPoint:
         epsilon_greedy: float = 0,
         use_vocal: bool = False,
     ):
-        from project.ChessPlayerApplet.ChessPlayerAppletMouse import (
+        from nlpChess.ChessPlayerApplet.ChessPlayerAppletMouse import (
             ChessPlayerAppletMouse,
         )
-        from project.ChessPlayerApplet.chess_bot import LSTMChessBot
+        from nlpChess.ChessPlayerApplet.chess_bot import LSTMChessBot
         import yaml
 
         with open("data/games_0001/moves_lookup_table.yaml", "r") as f:
@@ -62,17 +62,19 @@ class EntryPoint:
             epsilon=epsilon_greedy,
         )
         if use_vocal:
-            from project.ChessPlayerApplet.ChessPlayerAppletVocal import (
+            from nlpChess.ChessPlayerApplet.ChessPlayerAppletVocal import (
                 ChessPlayerAppletVocal,
             )
 
-            applet = ChessPlayerAppletVocal(fen=start_fen, botActionFunction=chess_bot)
+            applet = ChessPlayerAppletVocal(
+                fen=start_fen, botActionFunction=chess_bot)
 
         else:
-            from project.ChessPlayerApplet.ChessPlayerAppletMouse import (
+            from nlpChess.ChessPlayerApplet.ChessPlayerAppletMouse import (
                 ChessPlayerAppletMouse,
             )
 
-            applet = ChessPlayerAppletMouse(fen=start_fen, botActionFunction=chess_bot)
+            applet = ChessPlayerAppletMouse(
+                fen=start_fen, botActionFunction=chess_bot)
 
         applet.run()

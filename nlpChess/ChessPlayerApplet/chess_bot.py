@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
 import matplotlib
 from typing import List, Dict
-from project.models.lit_modules import SeqAnnotator
+from nlpChess.models.lit_modules import SeqAnnotator
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,6 @@ import multiprocessing as mp
 
 sns.set_theme()
 matplotlib.use("TkAgg")  # Add this at the top, after imports
-from abc import ABC, abstractmethod
 
 
 class _ChessBot(ABC):
@@ -174,7 +174,8 @@ class ChessBotPerformanceTracker:
         self.fig, self.axes = plt.subplots(
             self.num_metrics, 1, figsize=(5, 2.5 * self.num_metrics), squeeze=False
         )
-        self.fig.canvas.manager.set_window_title("Chess Bot Performance Tracker")
+        self.fig.canvas.manager.set_window_title(
+            "Chess Bot Performance Tracker")
         self.fig.suptitle("Chess Bot Performance")
         plt.show()
         self.update_plot()

@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 from pathlib import Path
 from pyargwriter import api
-from project.utils.parser import setup_entrypoint_parser
-from project.entrypoint import EntryPoint
-from project.utils.parser import setup_parser
+from nlpChess.utils.parser import setup_entrypoint_parser
+from nlpChess.entrypoint import EntryPoint
+from nlpChess.utils.parser import setup_parser
 
 
 def execute(args: dict) -> bool:

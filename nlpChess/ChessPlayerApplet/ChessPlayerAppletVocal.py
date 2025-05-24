@@ -1,8 +1,8 @@
 import pygame
 import chess
 from pygame.locals import *
-from project.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
-from project.utils.audioPlayer import AudioPlayer
+from nlpChess.ChessPlayerApplet.ChessPlayerApplet import ChessPlayerApplet
+from nlpChess.utils.audioPlayer import AudioPlayer
 import multiprocess as mp
 import time
 
@@ -103,7 +103,8 @@ class ChessPlayerAppletVocal(ChessPlayerApplet):
                         legal_moves = [move.uci() for move in legal_moves]
                         self.performAction(
                             chess.Move.from_uci(
-                                self.botActionFunction(self.UCImoves, legal_moves)
+                                self.botActionFunction(
+                                    self.UCImoves, legal_moves)
                             )
                         )
                         text = f"Bot played {self.UCImoves[-1]}, "
