@@ -5,7 +5,7 @@ import pandas as pd
 import tqdm
 import numpy as np
 from pyarrow.lib import ArrowInvalid
-from datasets import Dataset
+from datasets import Dataset as huggingfaceDataset
 
 
 class ChessDataset(Dataset):
@@ -13,7 +13,7 @@ class ChessDataset(Dataset):
         self,
         inputColumns: List[str],
         labelColumns: List[str],
-        dataset: Dataset = None,
+        dataset: huggingfaceDataset = None,
         parquette_path: str = "",
         lookupReference: "ChessDataset" = None,
     ):
@@ -24,7 +24,7 @@ class ChessDataset(Dataset):
         self.lookupReference = lookupReference
         self.inputColumns = inputColumns
         self.labelColumns = labelColumns
-        self.dataset: Dataset = dataset
+        self.dataset: huggingfaceDataset = dataset
 
         self.__instantiateLookup()
         self.__load_parquet() if self.dataset is None else self.__load_from_dataset()
@@ -146,15 +146,16 @@ class ChessDataset(Dataset):
         Args:
             index (int): game index
         """
+        print(index)
         # Get the row at the given index
         row = self.df.iloc[index]
 
         # Get the input and label columns
-        inputs = row[self.inputColumns].values
+        inputs = row[self.inputColumns[0]].values
         # Convert to tensors
         inputs = [torch.tensor(i) for i in inputs]
 
-        labels = row[self.labelColumns].values
+        labels = row[self.labelColumns[0]].values
         labels = [torch.tensor(i) for i in labels]
 
         return inputs, labels
