@@ -169,7 +169,7 @@ class SeqAnnotationDM(LightningDataModule):
             parquette_path=self.test_file,
             inputColumns=self.input_column,
             labelColumns=self.label_column,
-            lookupReference=self.fit_set,
+            lookupReference=self.validate_set,
         )
         self.lookUps = self.test_set.lookup_tables
 
