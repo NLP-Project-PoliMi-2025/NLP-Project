@@ -153,22 +153,22 @@ class SeqAnnotationDM(LightningDataModule):
         self.fit_set = ChessDataset(
             dataset=self.datasets['train'] if self.datasets else None,
             parquette_path=self.fit_file,
-            inputColumns=[self.input_column],
-            labelColumns=[self.label_column],
+            inputColumns=self.input_column,
+            labelColumns=self.label_column,
             lookupReference=None,
         )
         self.validate_set = ChessDataset(
             dataset=self.datasets['val'] if self.datasets else None,
             parquette_path=self.validate_file,
-            inputColumns=[self.input_column],
-            labelColumns=[self.label_column],
+            inputColumns=self.input_column,
+            labelColumns=self.label_column,
             lookupReference=self.fit_set,
         )
         self.test_set = ChessDataset(
             dataset=self.datasets['test'] if self.datasets else None,
             parquette_path=self.test_file,
-            inputColumns=[self.input_column],
-            labelColumns=[self.label_column],
+            inputColumns=self.input_column,
+            labelColumns=self.label_column,
             lookupReference=self.fit_set,
         )
         self.lookUps = self.test_set.lookup_tables
