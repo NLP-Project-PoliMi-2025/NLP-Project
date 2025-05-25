@@ -2,6 +2,7 @@ from gensim.models.word2vec import Word2Vec
 from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 from .BiLSTM_NER import BiLSTM_NER
+import yaml
 
 import os
 from enum import Enum
@@ -10,6 +11,12 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 Word2VecChess = Word2Vec.load(os.path.join(current_dir, "word2vec.model"))
 Word2VecShakespear = Word2Vec.load(os.path.join(
     current_dir, "word2vec_shakespear.model"))
+
+
+with open(os.path.join(current_dir, "./move_map.yaml"), "r") as f:
+    MOVE_MAP = yaml.safe_load(f)
+    # remove None values
+    MOVE_MAP = {v: k for k, v in MOVE_MAP.items() if v is not None}
 
 
 class PretrainedModels(Enum):

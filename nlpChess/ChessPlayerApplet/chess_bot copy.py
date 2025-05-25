@@ -7,8 +7,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing as mp
-from nlpChess.models import PretrainedModels
-from nlpChess.models import Word2VecChess, MOVE_MAP
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+
+# Define model repository and filename
+model_name = "ruhrpott/LSTM-chess-result-2-512-unidir"
+filename = "model.safetensors"
 
 sns.set_theme()
 matplotlib.use("TkAgg")  # Add this at the top, after imports
@@ -32,6 +36,11 @@ class LSTMChessBot(_ChessBot):
         bot_starts: bool = False,
         epsilon: float = 0,  # 0 for greedy, 1 for random
     ):
+        # Download the checkpoint file
+        checkpoint_path = hf_hub_download(
+            repo_id=model_name, filename=filename)
+        # Load the checkpoint state_dict
+        self.state_dict = load_file(checkpoint_path)
         self.weight_location = weight_location
         self.moves_vocab_table: Dict[str, int] = vocab_table["Moves"]
         self.outcome_vocab_table: Dict[str, int] = vocab_table["result_seqs"]
@@ -49,8 +58,11 @@ class LSTMChessBot(_ChessBot):
                 "Number of possible Moves": [0],
                 "Certainty": [0],
                 "Entropy": [0],
+                "Outcome Prediction": [[]],
             },
-            labels={}
+            {
+                "Outcome Prediction": ordered_outcome_keys,
+            },
         )
 
         if self.bot_starts:
@@ -61,23 +73,48 @@ class LSTMChessBot(_ChessBot):
         self.model = self.load_model(weight_location)
 
     def load_model(self, weights: str) -> SeqAnnotator:
-        return PretrainedModels.NEXT_TOKEN.loadModel()
+        # Load the model from the given weights
+        # This is a placeholder for the actual model loading logic
+        # Define your custom model
+        model = SeqAnnotator(
+            n_target_classes=3,  # Set this according to the number of target classes
+            label="result_seqs",  # Update as needed
+            vocab_size=1968,  # Adjust based on your use case
+            d_model=512,  # Should match the training config
+            n_layers=2,
+            model_type="lstm",
+            bidirectional=False,
+            word2vec='./model_weights/word2vec.model'
+        )
+
+        # Load the weights into the model
+        model.load_state_dict(self.state_dict)
+        return model
 
     def __call__(self, past_moves: List[str], legal_moves: List[str]) -> str:
         # transform the moves to indices
         if legal_moves == []:
             raise ValueError("No legal moves available")
         past_moves_embeds = torch.tensor(
-            [Word2VecChess.wv[move] for move in past_moves]
+            [self.moves_vocab_table[move] for move in past_moves]
+        )
+        legal_moves_embeds = torch.tensor(
+            [self.moves_vocab_table[move] for move in legal_moves]
         )
 
         # get the model prediction
         with torch.no_grad():
-            preds, _ = self.model.forward(past_moves_embeds.unsqueeze(0))
+            _, hidden = self.model.forward(past_moves_embeds)
+            legal_embeddings = self.model.embedding(legal_moves_embeds)
+            logits, _ = self.model.rnn.forward(legal_embeddings, hidden)
+            preds = self.model.fc_out.forward(logits)
 
-        preds = preds[:, -1, :].squeeze()
-        print(preds)
-        print(preds.shape)
+            current_evaluation, _ = self.model.forward(past_moves_embeds)
+
+        current_evaluation = current_evaluation.numpy()
+
+        preds = preds[:, self.objective - 1]  # account for 0-indexing
+        preds = torch.softmax(preds, dim=0)
 
         # Epsilon greedy action selection
         if torch.rand(1).item() < self.epsilon:
@@ -88,7 +125,7 @@ class LSTMChessBot(_ChessBot):
             rand_action = False
 
         certainty = preds[action_idx].item()
-        entropy = -torch.sum(preds * torch.log2(preds + 1e-10)).item()
+        entropy = -torch.sum(preds * torch.log(preds + 1e-10)).item()
         print(
             f"Predicted action index: {action_idx}, Certainty: {certainty}, Entropy: {entropy}, Random: {rand_action}"
         )
@@ -98,22 +135,11 @@ class LSTMChessBot(_ChessBot):
                     "Number of possible Moves": len(legal_moves),
                     "Certainty": certainty,
                     "Entropy": entropy,
+                    "Outcome Prediction": current_evaluation,
                 }
             )
         )
-        action = MOVE_MAP[action_idx]
-        if action not in legal_moves:
-            print(
-                f"Action {action} not in legal moves: {legal_moves}"
-            )
-            for moveId in range(len(preds)):
-                if MOVE_MAP[moveId] not in legal_moves:
-                    preds[moveId] = 0
-
-            preds /= preds.sum()  # Normalize the probabilities
-            action_idx = torch.argmax(preds).item()
-            action = MOVE_MAP[action_idx]
-
+        action = legal_moves[action_idx]
         return action
 
 
