@@ -49,9 +49,10 @@ class LSTMChessBot(_ChessBot):
                 "Number of possible Moves": [0],
                 "Certainty": [0],
                 "Entropy": [0],
+                "Predicted outcome": [[]]
             },
-            labels={}
-        )
+            labels={"Predicted outcome": ["1-0", "1/2-1/2", "0-1"]},
+                )
 
         if self.bot_starts:
             self.objective = self.outcome_vocab_table["1-0"]
@@ -59,6 +60,7 @@ class LSTMChessBot(_ChessBot):
             self.objective = self.outcome_vocab_table["0-1"]
 
         self.model = self.load_model(weight_location)
+        self.outcome_predictor = PretrainedModels.OUTCOMES.loadModel()
 
     def load_model(self, weights: str) -> SeqAnnotator:
         return PretrainedModels.NEXT_TOKEN.loadModel()
@@ -92,15 +94,7 @@ class LSTMChessBot(_ChessBot):
         print(
             f"Predicted action index: {action_idx}, Certainty: {certainty}, Entropy: {entropy}, Random: {rand_action}"
         )
-        self.performanceTracker.pushUpdate(
-            ChessBotPerformanceTrackerUpdate(
-                {
-                    "Number of possible Moves": len(legal_moves),
-                    "Certainty": certainty,
-                    "Entropy": entropy,
-                }
-            )
-        )
+        
         action = MOVE_MAP[action_idx]
         if action not in legal_moves:
             print(
@@ -114,6 +108,18 @@ class LSTMChessBot(_ChessBot):
             action_idx = torch.argmax(preds).item()
             action = MOVE_MAP[action_idx]
 
+        pred_outcome, _ = self.outcome_predictor.forward(past_moves_embeds)
+        pred_outcome = pred_outcome.detach().cpu().numpy()
+        self.performanceTracker.pushUpdate(
+            ChessBotPerformanceTrackerUpdate(
+                {
+                    "Number of possible Moves": len(legal_moves),
+                    "Certainty": certainty,
+                    "Entropy": entropy,
+                "Predicted outcome": pred_outcome
+                }
+            )
+        )
         return action
 
 
