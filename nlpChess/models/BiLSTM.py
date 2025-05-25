@@ -5,6 +5,22 @@ from gensim.models import Word2Vec
 import numpy as np
 
 
+class BiLSTM_NER(nn.Module):
+    def __init__(self, embedding_dim, hidden_dim, num_outcomes, n_layers: int=1):
+        super(BiLSTM_NER, self).__init__()
+        # Bidirectional LSTM; we set batch_first=True to have input like [batch, seq_len, embedding_dim]
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, bidirectional=False, batch_first=True)
+        # Fully connected layer to map hidden state coming from LSTM to output labels
+        # (the hidden state is a concatenation of two LSTM outputs since it is bidirectional)
+        self.fc = nn.Linear(hidden_dim, num_outcomes)
+
+    def forward(self, x):
+        # x: [batch_size, seq_len]
+        lstm_out, _ = self.lstm.forward(x)   # lstm_out: [batch_size, seq_len, hidden_dim*2]
+        logits = self.fc(lstm_out[:, -1, :])        # logits: [batch_size, num_tags]
+        probabs = torch.nn.functional.softmax(logits, dim=-1)  # probabs: [batch_size, num_tags]
+        return probabs, logits
+
 class BiLSTM(nn.Module):
     """
     A Bidirectional LSTM model for sequence classification.
