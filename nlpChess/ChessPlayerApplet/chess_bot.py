@@ -7,6 +7,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing as mp
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+
+# Define model repository and filename
+model_name = "ruhrpott/LSTM-chess-result-2-512-unidir"
+filename = "model.safetensors"
 
 sns.set_theme()
 matplotlib.use("TkAgg")  # Add this at the top, after imports
@@ -30,6 +36,11 @@ class LSTMChessBot(_ChessBot):
         bot_starts: bool = False,
         epsilon: float = 0,  # 0 for greedy, 1 for random
     ):
+        # Download the checkpoint file
+        checkpoint_path = hf_hub_download(
+            repo_id=model_name, filename=filename)
+        # Load the checkpoint state_dict
+        self.state_dict = load_file(checkpoint_path)
         self.weight_location = weight_location
         self.moves_vocab_table: Dict[str, int] = vocab_table["Moves"]
         self.outcome_vocab_table: Dict[str, int] = vocab_table["result_seqs"]
@@ -64,8 +75,20 @@ class LSTMChessBot(_ChessBot):
     def load_model(self, weights: str) -> SeqAnnotator:
         # Load the model from the given weights
         # This is a placeholder for the actual model loading logic
-        model = SeqAnnotator.load_from_checkpoint(weights, map_location="cpu")
-        model.eval()
+        # Define your custom model
+        model = SeqAnnotator(
+            n_target_classes=3,  # Set this according to the number of target classes
+            label="result_seqs",  # Update as needed
+            vocab_size=1968,  # Adjust based on your use case
+            d_model=512,  # Should match the training config
+            n_layers=2,
+            model_type="lstm",
+            bidirectional=False,
+            word2vec='./model_weights/word2vec.model'
+        )
+
+        # Load the weights into the model
+        model.load_state_dict(self.state_dict)
         return model
 
     def __call__(self, past_moves: List[str], legal_moves: List[str]) -> str:
