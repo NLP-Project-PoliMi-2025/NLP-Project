@@ -31,8 +31,12 @@ In addition, we wanted to investigate if the move language is more structured th
 
 To do that we performed an n-gram analysis and we found that the frequency of n-grams in chess is much higher with respect to english, and that most of the top frequent n-grams are the openings of chess.
 
+##  EMBEDDINGS
+
+We than trained Word2Vec both for Shakespeare and chess and we figured out that trying to retrieve a meaning without context for the moves was less powerful than to do it on english words, but we have still some  results such as clusters representing similar moves like promotions
 
 
+## GPT-2
 
 We decided to try fine-tuning GPT-2 to see whether this would improve its ability to suggest the next move given the history of a chess game. The model was fine-tuned using the move history of 90,000 games.
 
