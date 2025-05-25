@@ -1,5 +1,6 @@
 from huggingface_hub import PyTorchModelHubMixin
 
+from nlpChess.models.BiLSTM import BiLSTM_NER
 from nlpChess.models.lit_modules import SeqAnnotator
 
 
@@ -49,6 +50,18 @@ class SeqAnnotatorHFWrapper(
             *args,
             **kwargs,
         )
+        
+class SimpleLSTMHFWrapper(BiLSTM_NER,
+    PyTorchModelHubMixin,
+    repo_url="https://huggingface.co/ruhrpott/LSTM-chess-piece-1-128",
+    pipeline_tag="text-classification",
+    license="mit",
+):
+    def __init__(self, embedding_dim, hidden_dim, num_outcomes, n_layers = 1):
+        super().__init__(embedding_dim, hidden_dim, num_outcomes, n_layers)
+        
+        
+
 
 
 if __name__ == "__main__":
