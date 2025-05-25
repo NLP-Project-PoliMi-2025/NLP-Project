@@ -184,3 +184,5 @@ checkpoints/
 *.pkl
 
 *.pth
+
+Video/
