@@ -3,6 +3,7 @@ from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 from .BiLSTM_NER import BiLSTM_NER
 import yaml
+from typing import Dict
 
 import os
 from enum import Enum
@@ -20,9 +21,10 @@ with open(os.path.join(current_dir, "./move_map.yaml"), "r") as f:
 
 
 class PretrainedModels(Enum):
-    def __init__(self, modelPath: str, nOutcomes: int = 128):
+    def __init__(self, modelPath: str, nOutcomes: int = 128, outcomesLabels: Dict = None):
         self.modelPath = modelPath
         self.nOutcomes = nOutcomes
+        self.outcomesLabels = outcomesLabels
 
     def getArgumentsFromPath(path: str) -> list:
         pathList = path.split("-")[::-1]
@@ -41,7 +43,18 @@ class PretrainedModels(Enum):
         model.load_state_dict(state_dict)
         return model
 
-    NEXT_TOKEN = "ruhrpott/LSTM-chess-next-move-2-128", 1959
-    CAPTURES = "ruhrpott/LSTM-chess-captures-1-128", 7
-    CHECKS = "ruhrpott/LSTM-chess-checks-1-128", 2
-    PIECES = "ruhrpott/LSTM-chess-piece-1-128", 6
+    NEXT_TOKEN = "ruhrpott/LSTM-chess-next-move-2-128", 1959, MOVE_MAP
+
+    CAPTURES = "ruhrpott/LSTM-chess-captures-1-128", 7, {
+        i: w for i, w in enumerate("p r n b q k <NoCapture>".split())},
+
+    CHECKS = "ruhrpott/LSTM-chess-checks-1-128", 2, {0: "NoCheck", 1: "Check"},
+
+    PIECES = "ruhrpott/LSTM-chess-piece-1-128", 6, {
+        i: w for i, w in enumerate("p r n b q k".split())}
+
+    OUTCOMES = "ruhrpott/LSTM-chess-result-mid-game-1-128", 3, {
+        0: "0-1",
+        1: "1/2-1/2",
+        2: "1-0"
+    }
