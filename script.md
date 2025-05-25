@@ -1,0 +1,26 @@
+# SCRIPT FOR THE VIDEO RECORDING
+
+Since with this project we are looking into a **chess dataset**, the first question that came to our mind was:
+
+    "Is the language of chess comparable to a natural language?"
+
+To answer this question we performed some analysis on the dataset.
+
+Firstly, since the dataset is generated using Stockfish, we analyzed how the data is distributed.
+We found that the games are very long and probably the version of Stockfish used is not the best one since the tie percentage is not that high.
+
+Performing an average distribution of the pieces moved, we can see that the  king is the most moved piece and this suggests the presence of long ending phases in games.
+
+So we performed the same analysis looking at the lenght of the games, and from this heatmap we can truly see the opening phase (where pawns are moved) and the ending phase(where mostly king is moved).
+
+To compare the chess move language with a natural language (english in this case) we decided to load another dataset with the plays of Shakespear.
+
+We decided to apply the Zipf's Law to both dataset, that correlates frequencies of tokens with their rank.
+
+Since a natural language should have a Zipf's exponent close to one (as per Shakespear) we tried estimating the chess exponent. From this analysis emerges that chess language has an exponent close to the zipfian case but from the plot we can see that it is pretty far from the ideal case, a line with negative slope.
+
+We then tried to do the same analysis but for increasing move number and from the plot we can see a region where the Zipf's exponent is pretty much the same as the one of a natural language.
+
+In addition, we wanted to investigate if the move language is more structured than english, so if moves appear frequently near the same moves. 
+
+To do that we performed an n-gram analysis and we found that the frequency of n-grams in chess is much higher with respect to english, and that most of the top frequent n-grams are the openings of chess.
