@@ -410,7 +410,11 @@ class SeqAnnotator(pl.LightningModule):
         self, x: Tensor, logits: bool = False, hx: Tensor = None
     ) -> Tuple[Tensor, Tensor]:
         """
-        x: (batch, seq_len)
+        Args:
+            x: (batch, seq_len)
+        
+        Returns:
+            output, hidden
         """
         embedded = self.embedding(x)  # (batch, seq_len, d_model)
         if self.model_type in ["gru", "lstm", "mini-gru"]:
