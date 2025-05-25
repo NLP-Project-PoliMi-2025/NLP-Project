@@ -23,17 +23,21 @@ To compare the chess move language with a natural language (english in this case
 
 We decided to apply the Zipf's Law to both dataset, that correlates frequencies of tokens with their rank.
 
-Since a natural language should have a Zipf's exponent close to one (as per Shakespear) we tried estimating the chess exponent. From this analysis emerges that chess language has an exponent close to the zipfian case but from the plot we can see that it is pretty far from the ideal case, a line with negative slope.
+It has been recorded that most natural languages have a Zipf's exponent that ranges between 0.7 and 1.4.
 
-We then tried to do the same analysis but for increasing move number and from the plot we can see a region where the Zipf's exponent is pretty much the same as the one of a natural language.
+We computed the exponent for Shakespear and we saw that it aligns with the theoretical values for a natural language.
+We estimated the exponent for chess. From this analysis emerges that chess language has an exponent close to the zipfian case but from the plot we can see that it is pretty far from the ideal case, a line with negative slope.
 
-In addition, we wanted to investigate if the move language is more structured than english, so if moves appear frequently near the same moves. 
+We then tried to do the same analysis for all the moves performed up to a certain move count, and from the plot we can see a region where the Zipf's exponent is in the range of natural languages.
+
+In addition, we wanted to investigate if the move language is more structured than english, or whether there are moves that frequently appear together. 
 
 To do that we performed an n-gram analysis and we found that the frequency of n-grams in chess is much higher with respect to english, and that most of the top frequent n-grams are the openings of chess.
 
 ##  EMBEDDINGS
 
-We than trained Word2Vec both for Shakespeare and chess and we figured out that trying to retrieve a meaning without context for the moves was less powerful than to do it on english words, but we have still some  results such as clusters representing similar moves like promotions
+We than asked ourselves whether thecontext informations can be collected at the token level.
+So we trained Word2Vec both for Shakespeare and chess and we figured out that trying to retrieve a meaning for the move tokens was less powerful than to do it on english words, but we have still some  results such as clusters representing similar moves like promotions.
 
 
 ## GPT-2
@@ -46,6 +50,7 @@ Overall, the standard GPT-2 doesn't initially understand UCI moves, but starts t
 
 We evaluated the model on 10,000 sequences. The results weren't impressive, but sufficient to build a basic chess bot—very weak, capable of moving pieces most of the time, but with no strategic understanding.
 
+## PREDICTOR
 
 
-
+## CHESSBOT
