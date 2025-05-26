@@ -71,7 +71,7 @@ The main goal of this project is to investigate whether the language of chess mo
    cd NLP-Project-PoliMi-2025
    pip install -e .
     ```
-
+2. For the fineTunedGpt2 download the model.safetensor from [`here`](https://drive.google.com/file/d/1kZR8brp_6XpRQ37lstUAJOvd6Fx-FgRs/view?usp=sharing) into  'ChessBOT_GPT2/Model90K/model'
 ## Project Structure
 
 ---
